@@ -173,6 +173,201 @@ def line(
 
 
 # ============================================================
+#  正多面体（五种 Platonic Solids）线框
+# ============================================================
+
+
+def _auto_edges(vertices):
+    """内部辅助：自动检测多面体的棱——找出最短距离的所有顶点对。"""
+    min_dist_sq = float("inf")
+    for i in range(len(vertices)):
+        for j in range(i + 1, len(vertices)):
+            d_sq = sum((a - b) ** 2 for a, b in zip(vertices[i], vertices[j]))
+            if d_sq > 1e-10 and d_sq < min_dist_sq:
+                min_dist_sq = d_sq
+    edges = []
+    threshold = min_dist_sq * 1.0001
+    for i in range(len(vertices)):
+        for j in range(i + 1, len(vertices)):
+            d_sq = sum((a - b) ** 2 for a, b in zip(vertices[i], vertices[j]))
+            if d_sq <= threshold:
+                edges.append((i, j))
+    return edges
+
+
+def _wireframe(vertices, edges, size, points_per_edge, particle):
+    """内部辅助：沿多面体棱生成线框粒子。"""
+    shape = ParticleShape(particle=particle)
+    for a, b in edges:
+        va = tuple(c * size for c in vertices[a])
+        vb = tuple(c * size for c in vertices[b])
+        edge_shape = line(start=va, end=vb, points=points_per_edge, particle=particle)
+        shape = shape + edge_shape
+    return shape
+
+
+def _normalize(vertices):
+    """内部辅助：将顶点归一化到单位球面上。"""
+    result = []
+    for v in vertices:
+        length = math.sqrt(sum(c * c for c in v))
+        result.append(tuple(c / length for c in v) if length > 0 else v)
+    return result
+
+
+def polygon(
+    n: int = 6,
+    radius: float = 3.0,
+    samples: int = 120,
+    axis: str = "y",
+    particle: str = "minecraft:flame",
+) -> ParticleShape:
+    """
+    生成正多边形（正 n 边形）线框。
+    n: 边数  radius: 外接圆半径  axis: 法线方向
+    """
+    vertices = []
+    for i in range(n):
+        angle = 2 * math.pi * i / n - math.pi / 2
+        a, b = radius * math.cos(angle), radius * math.sin(angle)
+        if axis == "y":
+            vertices.append((a, 0.0, b))
+        elif axis == "x":
+            vertices.append((0.0, a, b))
+        else:
+            vertices.append((a, b, 0.0))
+    vertices.append(vertices[0])
+
+    total_edges = len(vertices) - 1
+    pts = []
+    for i in range(samples):
+        t = total_edges * i / samples
+        edge_idx = int(t)
+        frac = t - edge_idx
+        if edge_idx >= total_edges:
+            edge_idx = total_edges - 1
+            frac = 1.0
+        x0, y0, z0 = vertices[edge_idx]
+        x1, y1, z1 = vertices[edge_idx + 1]
+        pts.append((
+            x0 + (x1 - x0) * frac,
+            y0 + (y1 - y0) * frac,
+            z0 + (z1 - z0) * frac,
+        ))
+    return ParticleShape(pts, particle)
+
+
+def tetrahedron(
+    size: float = 3.0,
+    points_per_edge: int = 20,
+    particle: str = "minecraft:end_rod",
+) -> ParticleShape:
+    """
+    生成正四面体线框。
+    size: 外接球半径（所有顶点到中心的距离）
+    4 顶点 · 6 棱 · 4 面
+    """
+    raw = [(1, 1, 1), (1, -1, -1), (-1, 1, -1), (-1, -1, 1)]
+    vertices = _normalize(raw)
+    edges = _auto_edges(vertices)
+    return _wireframe(vertices, edges, size, points_per_edge, particle)
+
+
+def cube(
+    size: float = 3.0,
+    points_per_edge: int = 20,
+    particle: str = "minecraft:end_rod",
+) -> ParticleShape:
+    """
+    生成正方体（正六面体）线框。
+    size: 外接球半径（顶点到中心的距离）
+    8 顶点 · 12 棱 · 6 面
+    """
+    raw = [
+        (-1, -1, -1), (1, -1, -1), (1, -1, 1), (-1, -1, 1),
+        (-1, 1, -1), (1, 1, -1), (1, 1, 1), (-1, 1, 1),
+    ]
+    vertices = _normalize(raw)
+    edges = [
+        (0, 1), (1, 2), (2, 3), (3, 0),
+        (4, 5), (5, 6), (6, 7), (7, 4),
+        (0, 4), (1, 5), (2, 6), (3, 7),
+    ]
+    return _wireframe(vertices, edges, size, points_per_edge, particle)
+
+
+def octahedron(
+    size: float = 3.0,
+    points_per_edge: int = 20,
+    particle: str = "minecraft:end_rod",
+) -> ParticleShape:
+    """
+    生成正八面体线框。
+    size: 外接球半径
+    6 顶点 · 12 棱 · 8 面
+    """
+    vertices = [
+        (1, 0, 0), (-1, 0, 0),
+        (0, 1, 0), (0, -1, 0),
+        (0, 0, 1), (0, 0, -1),
+    ]
+    edges = _auto_edges(vertices)
+    return _wireframe(vertices, edges, size, points_per_edge, particle)
+
+
+def dodecahedron(
+    size: float = 3.0,
+    points_per_edge: int = 15,
+    particle: str = "minecraft:end_rod",
+) -> ParticleShape:
+    """
+    生成正十二面体线框。
+    size: 外接球半径
+    20 顶点 · 30 棱 · 12 五边形面
+    """
+    phi = (1 + math.sqrt(5)) / 2
+    inv_phi = 1 / phi
+    raw = [
+        # 8 个立方体顶点
+        (1, 1, 1), (1, 1, -1), (1, -1, 1), (1, -1, -1),
+        (-1, 1, 1), (-1, 1, -1), (-1, -1, 1), (-1, -1, -1),
+        # YZ 平面 4 个
+        (0, inv_phi, phi), (0, inv_phi, -phi),
+        (0, -inv_phi, phi), (0, -inv_phi, -phi),
+        # XZ 平面 4 个
+        (inv_phi, phi, 0), (inv_phi, -phi, 0),
+        (-inv_phi, phi, 0), (-inv_phi, -phi, 0),
+        # XY 平面 4 个
+        (phi, 0, inv_phi), (phi, 0, -inv_phi),
+        (-phi, 0, inv_phi), (-phi, 0, -inv_phi),
+    ]
+    vertices = _normalize(raw)
+    edges = _auto_edges(vertices)
+    return _wireframe(vertices, edges, size, points_per_edge, particle)
+
+
+def icosahedron(
+    size: float = 3.0,
+    points_per_edge: int = 20,
+    particle: str = "minecraft:end_rod",
+) -> ParticleShape:
+    """
+    生成正二十面体线框。
+    size: 外接球半径
+    12 顶点 · 30 棱 · 20 三角形面
+    """
+    phi = (1 + math.sqrt(5)) / 2
+    raw = [
+        (0, 1, phi), (0, 1, -phi), (0, -1, phi), (0, -1, -phi),
+        (1, phi, 0), (1, -phi, 0), (-1, phi, 0), (-1, -phi, 0),
+        (phi, 0, 1), (phi, 0, -1), (-phi, 0, 1), (-phi, 0, -1),
+    ]
+    vertices = _normalize(raw)
+    edges = _auto_edges(vertices)
+    return _wireframe(vertices, edges, size, points_per_edge, particle)
+
+
+# ============================================================
 #  自定义参数方程
 # ============================================================
 

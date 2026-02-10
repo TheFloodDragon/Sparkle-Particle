@@ -18,6 +18,13 @@ from .primitives import (
     line,
     parametric_curve,
     parametric_surface,
+    # 正多面体与多边形
+    polygon,
+    tetrahedron,
+    cube,
+    octahedron,
+    dodecahedron,
+    icosahedron,
 )
 
 __all__ = [
@@ -27,7 +34,7 @@ __all__ = [
     "ParticleCompiler",
     # 类型
     "Point3D",
-    # 几何图元
+    # 基础图形
     "circle",
     "sphere",
     "helix",
@@ -38,4 +45,11 @@ __all__ = [
     "line",
     "parametric_curve",
     "parametric_surface",
+    # 正多面体与多边形
+    "polygon",
+    "tetrahedron",
+    "cube",
+    "octahedron",
+    "dodecahedron",
+    "icosahedron",
 ]

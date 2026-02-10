@@ -20,6 +20,12 @@ from sparkle import (
     line,
     parametric_curve,
     parametric_surface,
+    polygon,
+    tetrahedron,
+    cube,
+    octahedron,
+    dodecahedron,
+    icosahedron,
 )
 
 
@@ -406,11 +412,369 @@ def main():
         (4,5),(5,6),(6,7),(7,4),
         (0,4),(1,5),(2,6),(3,7),
     ]
-    cube = ParticleShape(particle="minecraft:end_rod")
+    wireframe = ParticleShape(particle="minecraft:end_rod")
     for a, b in edges:
         edge = line(start=vertices[a], end=vertices[b], points=20, particle="minecraft:end_rod")
-        cube = cube + edge
-    ParticleCompiler.save(cube.offset(y=5), f"{output_dir}/wireframe_cube")
+        wireframe = wireframe + edge
+    ParticleCompiler.save(wireframe.offset(y=5), f"{output_dir}/wireframe_cube")
+
+    # ================================================================
+    #  8. 正多面体与复杂几何
+    # ================================================================
+
+    print("\n=== 8. 正多面体与复杂几何 ===")
+
+    # 8-1 五种正多面体（Platonic Solids）静态展示
+    ParticleCompiler.save(
+        tetrahedron(size=3, particle="minecraft:flame").offset(y=5),
+        f"{output_dir}/tetrahedron",
+    )
+    ParticleCompiler.save(
+        cube(size=3, particle="minecraft:soul_fire_flame").offset(y=5),
+        f"{output_dir}/cube",
+    )
+    ParticleCompiler.save(
+        octahedron(size=3, particle="minecraft:end_rod").offset(y=5),
+        f"{output_dir}/octahedron",
+    )
+    ParticleCompiler.save(
+        dodecahedron(size=3, particle="minecraft:cloud").offset(y=5),
+        f"{output_dir}/dodecahedron",
+    )
+    ParticleCompiler.save(
+        icosahedron(size=3, particle="minecraft:crit").offset(y=5),
+        f"{output_dir}/icosahedron",
+    )
+
+    # 8-2 正多边形：正六边形和正八边形
+    ParticleCompiler.save(
+        polygon(n=6, radius=4, samples=180, particle="minecraft:end_rod"),
+        f"{output_dir}/hexagon",
+    )
+    ParticleCompiler.save(
+        polygon(n=8, radius=4, samples=200, particle="minecraft:soul_fire_flame"),
+        f"{output_dir}/octagon",
+    )
+
+    # 8-3 正方体呼吸（放大缩小循环）
+    def breathing_cube(progress):
+        scale = 2 + math.sin(progress * 2 * math.pi) * 1.5
+        return cube(size=scale, points_per_edge=15, particle="minecraft:end_rod").offset(y=5)
+
+    ParticleCompiler.save_animation(
+        ParticleAnimation.expanding(breathing_cube, duration=60, fade_out=0),
+        f"{output_dir}/anim_cube_breathing", func_path="p:anim_cube_breath", loop=True,
+    )
+
+    # 8-4 旋转正二十面体
+    def spinning_icosahedron(progress):
+        angle = progress * 2 * math.pi
+        return (icosahedron(size=3, particle="minecraft:soul_fire_flame")
+                .rotate_y(angle).rotate_x(angle * 0.3).offset(y=5))
+
+    ParticleCompiler.save_animation(
+        ParticleAnimation.expanding(spinning_icosahedron, duration=60, fade_out=0),
+        f"{output_dir}/anim_spinning_icosa", func_path="p:anim_spin_icosa", loop=True,
+    )
+
+    # 8-5 正方体 → 球体 平滑变形
+    def cube_to_sphere_morph(progress):
+        c = cube(size=3, points_per_edge=15, particle="minecraft:end_rod")
+        pts = []
+        for x, y, z in c.points:
+            r = math.sqrt(x * x + y * y + z * z)
+            if r > 0:
+                sx, sy, sz = 3 * x / r, 3 * y / r, 3 * z / r
+                t = 0.5 - 0.5 * math.cos(progress * 2 * math.pi)  # 来回 ease
+                pts.append((x + (sx - x) * t, y + (sy - y) * t, z + (sz - z) * t))
+            else:
+                pts.append((x, y, z))
+        return ParticleShape(pts, particle="minecraft:end_rod").offset(y=5)
+
+    ParticleCompiler.save_animation(
+        ParticleAnimation.expanding(cube_to_sphere_morph, duration=60, fade_out=0),
+        f"{output_dir}/anim_cube_sphere", func_path="p:anim_cube_sphere", loop=True,
+    )
+
+    # 8-6 嵌套正多面体（俄罗斯套娃式）
+    nested = (
+        tetrahedron(size=1.5, particle="minecraft:flame")
+        + cube(size=2.5, particle="minecraft:soul_fire_flame")
+        + octahedron(size=3.5, particle="minecraft:end_rod")
+        + icosahedron(size=5, particle="minecraft:cloud")
+    ).offset(y=5)
+    ParticleCompiler.save(nested, f"{output_dir}/nested_polyhedra")
+
+    # 8-7 正十二面体爆炸（径向扩散）
+    ParticleCompiler.save(
+        dodecahedron(size=3, points_per_edge=12, particle="minecraft:flame")
+            .offset(y=5)
+            .with_radial_motion(speed=0.6, center=(0, 5, 0)),
+        f"{output_dir}/dodecahedron_explode",
+    )
+
+    # 8-8 正多面体轮播（循环切换五种正多面体并旋转）
+    def polyhedra_showcase(progress):
+        builders = [
+            lambda: tetrahedron(size=3, particle="minecraft:flame"),
+            lambda: cube(size=3, particle="minecraft:soul_fire_flame"),
+            lambda: octahedron(size=3, particle="minecraft:end_rod"),
+            lambda: dodecahedron(size=3, particle="minecraft:cloud"),
+            lambda: icosahedron(size=3, particle="minecraft:crit"),
+        ]
+        idx = min(int(progress * len(builders)), len(builders) - 1)
+        angle = progress * 6 * math.pi
+        return builders[idx]().rotate_y(angle).rotate_x(angle * 0.3).offset(y=5)
+
+    ParticleCompiler.save_animation(
+        ParticleAnimation.expanding(polyhedra_showcase, duration=100, fade_out=0),
+        f"{output_dir}/anim_poly_showcase", func_path="p:anim_poly_show", loop=True,
+    )
+
+    # 8-9 正方体面填充（实心面）
+    def cube_solid_surface(size=3, n_per_face=10, particle="minecraft:end_rod"):
+        s = size / math.sqrt(3)
+        faces = [
+            ((-s, -s, -s), (2*s, 0, 0), (0, 2*s, 0)),  # z=-s
+            ((-s, -s,  s), (2*s, 0, 0), (0, 2*s, 0)),  # z=+s
+            ((-s, -s, -s), (0, 0, 2*s), (0, 2*s, 0)),  # x=-s
+            (( s, -s, -s), (0, 0, 2*s), (0, 2*s, 0)),  # x=+s
+            ((-s, -s, -s), (2*s, 0, 0), (0, 0, 2*s)),  # y=-s
+            ((-s,  s, -s), (2*s, 0, 0), (0, 0, 2*s)),  # y=+s
+        ]
+        pts = []
+        for origin, u_vec, v_vec in faces:
+            for i in range(n_per_face):
+                for j in range(n_per_face):
+                    u = i / (n_per_face - 1)
+                    v = j / (n_per_face - 1)
+                    pts.append((
+                        origin[0] + u * u_vec[0] + v * v_vec[0],
+                        origin[1] + u * u_vec[1] + v * v_vec[1],
+                        origin[2] + u * u_vec[2] + v * v_vec[2],
+                    ))
+        return ParticleShape(pts, particle)
+
+    ParticleCompiler.save(
+        cube_solid_surface(size=3, n_per_face=10, particle="minecraft:end_rod").offset(y=5),
+        f"{output_dir}/cube_solid",
+    )
+
+    # 8-10 旋转正八面体 + 尾迹（轨迹残影效果）
+    def octahedron_trail(progress):
+        shape = ParticleShape(particle="minecraft:end_rod")
+        n_ghosts = 5
+        for g in range(n_ghosts):
+            t = progress - g * 0.02
+            if t < 0:
+                continue
+            angle = t * 4 * math.pi
+            alpha = 1.0 - g * 0.18
+            n_pts = max(5, int(20 * alpha))
+            ghost = octahedron(size=3, points_per_edge=n_pts, particle="minecraft:end_rod")
+            ghost = ghost.rotate_y(angle).rotate_z(angle * 0.5)
+            shape = shape + ghost
+        return shape.offset(y=5)
+
+    ParticleCompiler.save_animation(
+        ParticleAnimation.expanding(octahedron_trail, duration=60, fade_out=0),
+        f"{output_dir}/anim_octa_trail", func_path="p:anim_octa_trail", loop=True,
+    )
+
+    # ================================================================
+    #  9. 高级参数曲线与曲面
+    # ================================================================
+
+    print("\n=== 9. 高级参数曲线与曲面 ===")
+
+    # 9-1 三叶结 (Trefoil Knot)
+    def trefoil_knot(t):
+        x = math.sin(t) + 2 * math.sin(2 * t)
+        y = math.cos(t) - 2 * math.cos(2 * t)
+        z = -math.sin(3 * t)
+        return (x, y, z)
+
+    ParticleCompiler.save(
+        parametric_curve(trefoil_knot, t_range=(0, 2 * math.pi), points=400,
+                         particle="minecraft:end_rod").offset(y=5),
+        f"{output_dir}/trefoil_knot",
+    )
+
+    # 9-2 洛伦兹吸引子 (Lorenz Attractor) —— 数值积分
+    def lorenz_attractor(n_points=2000, dt=0.005, sigma=10, rho=28, beta=8/3, scale=0.15):
+        x, y, z = 1.0, 1.0, 1.0
+        pts = []
+        for _ in range(n_points):
+            dx = sigma * (y - x)
+            dy = x * (rho - z) - y
+            dz = x * y - beta * z
+            x += dx * dt
+            y += dy * dt
+            z += dz * dt
+            pts.append((x * scale, z * scale - 3, y * scale))
+        return ParticleShape(pts, particle="minecraft:end_rod")
+
+    ParticleCompiler.save(
+        lorenz_attractor().offset(y=5),
+        f"{output_dir}/lorenz_attractor",
+    )
+
+    # 9-3 克莱因瓶 (Klein Bottle) 参数曲面
+    def klein_bottle(u, v):
+        if u < math.pi:
+            x = 3 * math.cos(u) * (1 + math.sin(u)) + 2 * (1 - math.cos(u) / 2) * math.cos(u) * math.cos(v)
+            z = -8 * math.sin(u) - 2 * (1 - math.cos(u) / 2) * math.sin(u) * math.cos(v)
+        else:
+            x = 3 * math.cos(u) * (1 + math.sin(u)) + 2 * (1 - math.cos(u) / 2) * math.cos(v + math.pi)
+            z = -8 * math.sin(u)
+        y = -2 * (1 - math.cos(u) / 2) * math.sin(v)
+        return (x * 0.3, y * 0.3, z * 0.3)
+
+    ParticleCompiler.save(
+        parametric_surface(klein_bottle, u_range=(0, 2 * math.pi), v_range=(0, 2 * math.pi),
+                           u_points=50, v_points=20, particle="minecraft:end_rod").offset(y=5),
+        f"{output_dir}/klein_bottle",
+    )
+
+    # 9-4 圆环结 (Torus Knot) p=2, q=3
+    def torus_knot(t, p=2, q=3, R=3, r=1):
+        angle = q * t
+        x = (R + r * math.cos(angle)) * math.cos(p * t)
+        y = r * math.sin(angle)
+        z = (R + r * math.cos(angle)) * math.sin(p * t)
+        return (x, y, z)
+
+    ParticleCompiler.save(
+        parametric_curve(torus_knot, t_range=(0, 2 * math.pi), points=500,
+                         particle="minecraft:soul_fire_flame").offset(y=5),
+        f"{output_dir}/torus_knot",
+    )
+
+    # 9-5 球面谐函数可视化（球面变形 Y_3^2 模式）
+    def spherical_harmonic(u, v, amplitude=0.6):
+        theta, phi_angle = v, u
+        r_base = 3
+        # Y_3^2 球面谐函数的简化形式
+        deformation = amplitude * (math.sin(theta) ** 2) * math.cos(2 * phi_angle)
+        r = r_base + deformation
+        x = r * math.sin(theta) * math.cos(phi_angle)
+        y = r * math.cos(theta)
+        z = r * math.sin(theta) * math.sin(phi_angle)
+        return (x, y, z)
+
+    ParticleCompiler.save(
+        parametric_surface(spherical_harmonic, u_range=(0, 2 * math.pi), v_range=(0, math.pi),
+                           u_points=40, v_points=20, particle="minecraft:end_rod").offset(y=5),
+        f"{output_dir}/spherical_harmonic",
+    )
+
+    # ================================================================
+    #  10. 高级动画
+    # ================================================================
+
+    print("\n=== 10. 高级动画 ===")
+
+    # 10-1 正多面体逐级生长（从正四面体到正二十面体连续变换）
+    def polyhedra_growth(progress):
+        stages = [
+            (0.0, lambda: tetrahedron(size=3, particle="minecraft:flame")),
+            (0.2, lambda: cube(size=3, particle="minecraft:soul_fire_flame")),
+            (0.4, lambda: octahedron(size=3, particle="minecraft:end_rod")),
+            (0.6, lambda: dodecahedron(size=3, particle="minecraft:cloud")),
+            (0.8, lambda: icosahedron(size=3, particle="minecraft:crit")),
+        ]
+        for i in range(len(stages) - 1, -1, -1):
+            if progress >= stages[i][0]:
+                shape = stages[i][1]()
+                # 出现时从小放大
+                local_p = (progress - stages[i][0]) / 0.2
+                scale = min(1.0, local_p * 2) if local_p < 0.5 else 1.0
+                return shape.scale(scale).offset(y=5)
+        return tetrahedron(size=0.1, particle="minecraft:flame").offset(y=5)
+
+    ParticleCompiler.save_animation(
+        ParticleAnimation.expanding(polyhedra_growth, duration=100, fade_out=10),
+        f"{output_dir}/anim_poly_growth", func_path="p:anim_poly_growth",
+    )
+
+    # 10-2 三叶结旋转发光
+    def spinning_trefoil(progress):
+        angle = progress * 2 * math.pi
+        knot = parametric_curve(trefoil_knot, t_range=(0, 2 * math.pi), points=300,
+                                particle="minecraft:end_rod")
+        return knot.rotate_y(angle).rotate_x(math.pi / 6).offset(y=5)
+
+    ParticleCompiler.save_animation(
+        ParticleAnimation.expanding(spinning_trefoil, duration=60, fade_out=0),
+        f"{output_dir}/anim_spinning_knot", func_path="p:anim_spin_knot", loop=True,
+    )
+
+    # 10-3 双正方体对旋（两个正方体反向旋转 + 呼吸缩放）
+    def dual_cube_spin(progress):
+        angle = progress * 2 * math.pi
+        scale = 2.5 + math.sin(progress * 4 * math.pi) * 0.8
+        c1 = cube(size=scale, points_per_edge=12, particle="minecraft:flame").rotate_y(angle).rotate_x(0.3)
+        c2 = cube(size=scale, points_per_edge=12, particle="minecraft:soul_fire_flame").rotate_y(-angle).rotate_z(0.3)
+        return (c1 + c2).offset(y=5)
+
+    ParticleCompiler.save_animation(
+        ParticleAnimation.expanding(dual_cube_spin, duration=60, fade_out=0),
+        f"{output_dir}/anim_dual_cube", func_path="p:anim_dual_cube", loop=True,
+    )
+
+    # 10-4 正二十面体内爆收缩 → 爆炸扩散
+    def icosa_implosion(progress):
+        if progress < 0.5:
+            # 收缩阶段
+            t = progress / 0.5
+            scale = 4 * (1 - t) + 0.3 * t
+            return icosahedron(size=scale, points_per_edge=15, particle="minecraft:portal").offset(y=5)
+        else:
+            # 爆炸阶段
+            t = (progress - 0.5) / 0.5
+            scale = 0.3 + t * 6
+            shape = icosahedron(size=scale, points_per_edge=15, particle="minecraft:flame")
+            return shape.offset(y=5).with_radial_motion(speed=0.3 + t * 0.8, center=(0, 5, 0))
+
+    ParticleCompiler.save_animation(
+        ParticleAnimation.expanding(icosa_implosion, duration=60, fade_out=10),
+        f"{output_dir}/anim_icosa_implode", func_path="p:anim_icosa_impl",
+    )
+
+    # 10-5 粒子矩阵立方体（面填充 + 旋转）
+    def rotating_solid_cube(progress):
+        angle = progress * 2 * math.pi
+        return (cube_solid_surface(size=2.5, n_per_face=8, particle="minecraft:end_rod")
+                .rotate_y(angle).rotate_x(angle * 0.6).offset(y=5))
+
+    ParticleCompiler.save_animation(
+        ParticleAnimation.expanding(rotating_solid_cube, duration=60, fade_out=0),
+        f"{output_dir}/anim_solid_cube_spin", func_path="p:anim_solidcube", loop=True,
+    )
+
+    # 10-6 DNA 双螺旋 + 正八面体节点装饰
+    def dna_decorated(progress):
+        angle_offset = progress * 2 * math.pi
+        h1 = helix(radius=2, height=12, turns=4, points=250,
+                    particle="minecraft:end_rod").rotate_y(angle_offset)
+        h2 = helix(radius=2, height=12, turns=4, points=250,
+                    particle="minecraft:soul_fire_flame").rotate_y(angle_offset + math.pi)
+        # 在螺旋节点处放置小正八面体
+        decorations = ParticleShape(particle="minecraft:flame")
+        n_nodes = 8
+        for i in range(n_nodes):
+            t = i / n_nodes
+            y = t * 12
+            theta = 4 * 2 * math.pi * t + angle_offset
+            x, z = 2 * math.cos(theta), 2 * math.sin(theta)
+            node = octahedron(size=0.4, points_per_edge=5, particle="minecraft:flame").offset(x=x, y=y, z=z)
+            decorations = decorations + node
+        return h1 + h2 + decorations
+
+    ParticleCompiler.save_animation(
+        ParticleAnimation.expanding(dna_decorated, duration=60, fade_out=0),
+        f"{output_dir}/anim_dna_decorated", func_path="p:anim_dna_deco", loop=True,
+    )
 
     # ================================================================
     #  完成
