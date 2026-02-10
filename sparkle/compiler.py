@@ -22,13 +22,13 @@ class ParticleCompiler:
     # ----------------------------------------------------------
 
     @staticmethod
-    def _fmt_coord(v: float) -> str:
+    def _fmt_coord(v: float, prec: int = 4) -> str:
         """格式化相对坐标值。"""
         v = v if v != 0 else 0.0
-        return f"~{v:.4f}"
+        return f"~{v:.{prec}f}"
 
     @staticmethod
-    def compile(shape: ParticleShape) -> List[str]:
+    def compile(shape: ParticleShape, prec: int = 4) -> List[str]:
         """将 ParticleShape 编译为 Minecraft particle 命令列表。"""
         fmt = ParticleCompiler._fmt_coord
         commands = []
@@ -37,14 +37,14 @@ class ParticleCompiler:
                 mx, my, mz = shape.motions[i]
                 cmd = (
                     f"particle {shape.particle} "
-                    f"{fmt(px)} {fmt(py)} {fmt(pz)} "
-                    f"{mx:.4f} {my:.4f} {mz:.4f} {shape.speed} 0"
+                    f"{fmt(px, prec)} {fmt(py, prec)} {fmt(pz, prec)} "
+                    f"{mx:.{prec}f} {my:.{prec}f} {mz:.{prec}f} {shape.speed} 0"
                 )
             else:
                 dx, dy, dz = shape.delta
                 cmd = (
                     f"particle {shape.particle} "
-                    f"{fmt(px)} {fmt(py)} {fmt(pz)} "
+                    f"{fmt(px, prec)} {fmt(py, prec)} {fmt(pz, prec)} "
                     f"{dx} {dy} {dz} {shape.speed} {shape.count}"
                 )
             commands.append(cmd)
@@ -55,17 +55,18 @@ class ParticleCompiler:
     # ----------------------------------------------------------
 
     @staticmethod
-    def save(shape: ParticleShape, filename: str) -> str:
+    def save(shape: ParticleShape, filename: str, prec: int = 4) -> str:
         """
         将 ParticleShape 保存为 .mcfunction 文件。
 
         filename: 输出文件路径（自动补 .mcfunction 后缀）
+        prec: 坐标小数位数（默认 4）
         返回文件的绝对路径。
         """
         if not filename.endswith(".mcfunction"):
             filename += ".mcfunction"
         os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
-        commands = ParticleCompiler.compile(shape)
+        commands = ParticleCompiler.compile(shape, prec)
         with open(filename, "w", encoding="utf-8") as f:
             f.write(f"# 由 Sparkle 生成\n")
             f.write(f"# 粒子数量: {len(commands)}\n\n")
@@ -84,6 +85,7 @@ class ParticleCompiler:
         directory: str,
         func_path: str = "p:anim",
         loop: bool = False,
+        prec: int = 4,
     ) -> str:
         """
         将 ParticleAnimation 保存为一组 .mcfunction 文件。
@@ -96,6 +98,7 @@ class ParticleCompiler:
                     帧文件会生成为 func_path/frame_XXXX
         loop:       True 时最后一帧会重新调度第一帧，实现无限循环播放。
                     用 /function func_path/stop 停止。
+        prec:  坐标小数位数（默认 4）
 
         生成结构:
             <directory>/main.mcfunction            ← 入口，召唤锚点 + 调用第一帧
@@ -119,7 +122,7 @@ class ParticleCompiler:
             frame_shape = anim.frames[tick]
 
             # --- 粒子文件 ---
-            particle_cmds = ParticleCompiler.compile(frame_shape)
+            particle_cmds = ParticleCompiler.compile(frame_shape, prec)
             particles_file = f"{directory}/{particles_name}.mcfunction"
             with open(particles_file, "w", encoding="utf-8") as f:
                 f.write(f"# 帧 {tick}/{sorted_ticks[-1]}  粒子: {len(frame_shape.points)}\n")

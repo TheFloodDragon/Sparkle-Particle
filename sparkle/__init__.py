@@ -7,6 +7,7 @@ Sparkle — Minecraft 粒子命令生成库
 from .shape import ParticleShape, Point3D
 from .animation import ParticleAnimation
 from .compiler import ParticleCompiler
+from .sps import save as save_sps, load as load_sps
 from .primitives import (
     circle,
     sphere,
@@ -34,6 +35,9 @@ __all__ = [
     "ParticleCompiler",
     # 类型
     "Point3D",
+    # SPS 格式
+    "save_sps",
+    "load_sps",
     # 基础图形
     "circle",
     "sphere",
