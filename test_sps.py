@@ -248,6 +248,217 @@ print("  === output_test/demo_circle8.sps ===")
 with open("output_test/demo_circle8.sps") as f:
     print("  " + f.read().replace("\n", "\n  "))
 
+# ------ 8. SNBT 序列化 ------
+print("\n--- 8. SNBT 序列化 ---")
+
+from sparkle.snbt import to_snbt, from_snbt
+
+# 基础类型序列化
+check("to_snbt bool true",  to_snbt(True)  == "1b")
+check("to_snbt bool false", to_snbt(False) == "0b")
+check("to_snbt int",        to_snbt(42)    == "42")
+check("to_snbt float 1.5",  to_snbt(1.5)   == "1.5d")
+check("to_snbt float 1.0",  to_snbt(1.0)   == "1.0d")
+check("to_snbt string",     to_snbt("hello") == '"hello"')
+check("to_snbt list int",   to_snbt([1, 2, 3]) == "[1,2,3]")
+check("to_snbt list float", to_snbt([1.0, 0.0]) == "[1.0d,0.0d]")
+check("to_snbt dict",       to_snbt({"a": 1}) == "{a:1}")
+
+# 字符串转义
+check("to_snbt escape quote",
+      to_snbt('say "hi"') == '"say \\"hi\\""')
+check("to_snbt escape backslash",
+      to_snbt('a\\b') == '"a\\\\b"')
+
+# 序列化→反序列化往返（仅浮点和字符串可完整往返）
+for label, val in [
+    ("float",  1.5),
+    ("string", "hello"),
+    ("str_esc", 'a"b\\c'),
+    ("dict_float", {"color": [1.0, 0.0, 0.0], "scale": 2.0}),
+]:
+    check(f"snbt round-trip {label}", from_snbt(to_snbt(val)) == val)
+
+# ------ 9. SNBT 反序列化 ------
+print("\n--- 9. SNBT 反序列化 ---")
+
+# 无后缀数值解析为字符串
+check("parse int (no suffix)",    from_snbt("42") == "42")
+check("parse neg int (no suffix)", from_snbt("-5") == "-5")
+check("parse float (no suffix)",  from_snbt("1.5") == "1.5")
+check("parse string dq", from_snbt('"hello"') == "hello")
+check("parse string sq", from_snbt("'hello'") == "hello")
+check("parse list (no suffix)",   from_snbt("[1,2,3]") == ["1", "2", "3"])
+check("parse dict (no suffix)",   from_snbt("{a:1}") == {"a": "1"})
+check("parse empty dict", from_snbt("{}") == {})
+check("parse empty list", from_snbt("[]") == [])
+
+# 布尔值解析为无引号字符串
+check("parse true",     from_snbt("true") == "true")
+check("parse false",    from_snbt("false") == "false")
+check("parse TRUE",     from_snbt("TRUE") == "TRUE")
+check("parse False",    from_snbt("False") == "False")
+check("parse TrUe",     from_snbt("TrUe") == "TrUe")
+
+# 无引号字符串边界（truevalue 等仍为完整字符串）
+check("parse truevalue = unquoted string",
+      from_snbt("{a:truevalue}")["a"] == "truevalue")
+check("parse falsetto = unquoted string",
+      from_snbt("{a:falsetto}")["a"] == "falsetto")
+
+# 转义序列
+check("parse \\\"", from_snbt(r'"a\"b"') == 'a"b')
+check("parse \\\\", from_snbt(r'"a\\b"') == 'a\\b')
+check("parse \\n",  from_snbt(r'"a\nb"') == 'a\nb')
+check("parse \\t",  from_snbt(r'"a\tb"') == 'a\tb')
+check("parse \\s",  from_snbt(r'"a\sb"') == 'a b')
+check("parse \\b",  from_snbt(r'"a\bb"') == 'a\bb')
+check("parse \\f",  from_snbt(r'"a\fb"') == 'a\fb')
+check("parse \\r",  from_snbt(r'"a\rb"') == 'a\rb')
+
+# 单引号内转义
+check("parse sq escape", from_snbt(r"'a\'b'") == "a'b")
+check("parse sq dq ok",  from_snbt("'a\"b'") == 'a"b')
+
+# Unicode 转义
+check("parse \\x42",   from_snbt(r'"a\x42b"') == 'aBb')
+check("parse \\u0041", from_snbt(r'"a\u0041b"') == 'aAb')
+check("parse \\U00000041", from_snbt(r'"a\U00000041b"') == 'aAb')
+
+# 带后缀的数值（仅带后缀时解析为数值）
+check("parse 1.5f",  from_snbt("1.5f") == 1.5)
+check("parse 1.5d",  from_snbt("1.5d") == 1.5)
+check("parse 3b",    from_snbt("3b") == 3)
+check("parse 100s",  from_snbt("100s") == 100)
+check("parse 100i",  from_snbt("100i") == 100)
+check("parse 100L",  from_snbt("100L") == 100)
+check("parse 42sb",  from_snbt("42sb") == 42)
+check("parse 200ub", from_snbt("200ub") == 200)
+
+# 无后缀的十六进制/二进制/下划线/浮点格式 → 字符串
+check("parse 0xFF (no suffix)",    from_snbt("0xFF") == "0xFF")
+check("parse 0xCAFE (no suffix)",  from_snbt("0xCAFE") == "0xCAFE")
+check("parse 0b101 (no suffix)",   from_snbt("0b101") == "0b101")
+check("parse -0xFF (no suffix)",   from_snbt("-0xFF") == "-0xFF")
+check("parse 1_000 (no suffix)",   from_snbt("1_000") == "1_000")
+check("parse 0xAB_CD (no suffix)", from_snbt("0xAB_CD") == "0xAB_CD")
+check("parse 0b10_01 (no suffix)", from_snbt("0b10_01") == "0b10_01")
+check("parse .5 (no suffix)",     from_snbt(".5") == ".5")
+check("parse 1. (no suffix)",     from_snbt("1.") == "1.")
+check("parse 1.2e3 (no suffix)",  from_snbt("1.2e3") == "1.2e3")
+check("parse 1.2E+3 (no suffix)", from_snbt("1.2E+3") == "1.2E+3")
+check("parse 12000e-1 (no suffix)", from_snbt("12000e-1") == "12000e-1")
+
+# 0b 歧义：0 + 字节后缀 b → int 0；0b101 无后缀 → 字符串
+check("parse 0b = byte 0", from_snbt("{a:0b}") == {"a": 0})
+check("parse 0b101 = string", from_snbt("{a:0b101}") == {"a": "0b101"})
+
+# 类型化数组（as_int 强制转换，无后缀值也能通过 int() 转换）
+check("parse [B;1,2]",   from_snbt("[B;1,2]") == [1, 2])
+check("parse [I;1,2,3]", from_snbt("[I;1,2,3]") == [1, 2, 3])
+check("parse [L;1,2]",   from_snbt("[L;1,2]") == [1, 2])
+check("parse [B;]",      from_snbt("[B;]") == [])
+
+# 结尾逗号（无后缀值为字符串）
+check("parse [1,2,]",  from_snbt("[1,2,]") == ["1", "2"])
+check("parse {a:1,}",  from_snbt("{a:1,}") == {"a": "1"})
+
+# 无引号字符串
+check("parse unquoted value",
+      from_snbt("{a:test}") == {"a": "test"})
+check("parse unquoted key+value",
+      from_snbt("{block_state:stone}") == {"block_state": "stone"})
+
+# 带后缀的嵌套结构（典型粒子选项）
+check("parse dust options (suffixed)",
+      from_snbt('{color:[1.0d,0.0d,0.0d],scale:2.0d}')
+      == {"color": [1.0, 0.0, 0.0], "scale": 2.0})
+check("parse block options",
+      from_snbt('{block_state:"minecraft:stone"}')
+      == {"block_state": "minecraft:stone"})
+check("parse nested dict (suffixed)",
+      from_snbt('{a:{b:1i},c:[2i,3i]}')
+      == {"a": {"b": 1}, "c": [2, 3]})
+
+# 带空白的格式
+check("parse with whitespace",
+      from_snbt('{ color : [1.0d, 0.0d, 0.0d] , scale : 2.0d }')
+      == {"color": [1.0, 0.0, 0.0], "scale": 2.0})
+
+# 混合列表
+check("parse mixed list",
+      from_snbt("['text',{a:1b},123i]") == ["text", {"a": 1}, 123])
+
+# ------ 10. 带粒子选项的 SPS 往返 ------
+print("\n--- 10. 带粒子选项的 SPS 往返 ---")
+
+# dust 粒子
+dust_shape = ParticleShape(
+    points=[(0, 0, 0), (1, 1, 1), (2, 2, 2)],
+    particle="minecraft:dust",
+    options={"color": [1.0, 0.0, 0.0], "scale": 2.0},
+)
+save_sps(dust_shape, "output_test/test_dust_opts")
+ld = load_sps("output_test/test_dust_opts.sps")
+check("dust opts preserved",
+      ld.options == dust_shape.options,
+      f"got {ld.options}")
+check("dust cmds match", cmds_match(dust_shape, ld))
+
+# block 粒子
+block_shape = ParticleShape(
+    points=[(0, 0, 0), (1, 0, 0)],
+    particle="minecraft:block",
+    options={"block_state": "minecraft:stone"},
+)
+save_sps(block_shape, "output_test/test_block_opts")
+lb = load_sps("output_test/test_block_opts.sps")
+check("block opts preserved",
+      lb.options == block_shape.options,
+      f"got {lb.options}")
+
+# 验证 SPS 文件中 o 行为 SNBT 格式（无引号键）
+with open("output_test/test_dust_opts.sps", "r") as f:
+    sps_text = f.read()
+o_line = [l.strip() for l in sps_text.split("\n") if l.strip().startswith("o ")][0]
+check("sps o line is SNBT",
+      "color:" in o_line and '"color"' not in o_line,
+      f"got: {o_line}")
+
+# 动画中的选项增量编码
+anim3 = ParticleAnimation()
+anim3.add_frame(0, ParticleShape(
+    points=[(0, 0, 0)], particle="minecraft:dust",
+    options={"color": [1.0, 0.0, 0.0], "scale": 1.0}))
+anim3.add_frame(1, ParticleShape(
+    points=[(1, 0, 0)], particle="minecraft:dust",
+    options={"color": [1.0, 0.0, 0.0], "scale": 1.0}))  # 相同
+anim3.add_frame(2, ParticleShape(
+    points=[(2, 0, 0)], particle="minecraft:dust",
+    options={"color": [0.0, 1.0, 0.0], "scale": 2.0}))  # 不同
+anim3.add_frame(3, ParticleShape(
+    points=[(3, 0, 0)], particle="minecraft:dust",
+    options=None))  # 清除
+
+save_sps(anim3, "output_test/test_anim_opts")
+la3 = load_sps("output_test/test_anim_opts.sps")
+check("anim opts frame 0",
+      la3.frames[0].options == {"color": [1.0, 0.0, 0.0], "scale": 1.0})
+check("anim opts frame 1 (same, inherited)",
+      la3.frames[1].options == {"color": [1.0, 0.0, 0.0], "scale": 1.0})
+check("anim opts frame 2 (changed)",
+      la3.frames[2].options == {"color": [0.0, 1.0, 0.0], "scale": 2.0})
+check("anim opts frame 3 (inherited, null removed)",
+      la3.frames[3].options == {"color": [0.0, 1.0, 0.0], "scale": 2.0})
+
+# 验证 o 行增量编码（帧1相同不重复，帧2变化写出，帧3 无选项不写出）
+with open("output_test/test_anim_opts.sps", "r") as f:
+    anim_opts_text = f.read()
+anim_o_lines = [l.strip() for l in anim_opts_text.split("\n") if l.strip().startswith("o ")]
+check("o lines count = 2 (initial + change)",
+      len(anim_o_lines) == 2,
+      f"got {len(anim_o_lines)}: {anim_o_lines}")
+
 # ==============================================================
 print("=" * 62)
 print(f"  结果: {PASS} passed, {FAIL} failed")

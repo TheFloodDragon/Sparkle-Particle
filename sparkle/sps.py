@@ -15,16 +15,16 @@ SPS (Sparkle Particle Storage) 格式编解码器。
     <dx> <dy> <dz>             增量行（无前缀；轴省略模式下省一个分量）
     = <k> <n>                  模式游程：重复上 k 行增量 n 次
     M <x> <y> <z>              运动向量起点（绝对，始终 3D）
-    o <json>                    粒子选项（JSON 格式，仅变化时写出；null 表示清除）
+    o <snbt>                    粒子选项（SNBT 格式，仅变化时写出）
     > <tick>                    动画帧标记（刻）
     # ...                       注释行
 """
 
-import json
 import os
 
 from .shape import ParticleShape, Point3D
 from .animation import ParticleAnimation
+from .snbt import to_snbt, from_snbt
 
 
 # ============================================================
@@ -235,7 +235,7 @@ def _encode_shape(shape, prec, prev=None):
         if cc != 1:
             lines.append(f"c {cc}")
         if co is not None:
-            lines.append(f"o {json.dumps(co, ensure_ascii=False, separators=(',', ':'))}")
+            lines.append(f"o {to_snbt(co)}")
     else:
         if cd != prev["d"]:
             lines.append(f"d {_fmt3(cd, prec)}")
@@ -245,9 +245,7 @@ def _encode_shape(shape, prec, prev=None):
             lines.append(f"c {cc}")
         if co != prev.get("o"):
             if co is not None:
-                lines.append(f"o {json.dumps(co, ensure_ascii=False, separators=(',', ':'))}")
-            else:
-                lines.append("o null")
+                lines.append(f"o {to_snbt(co)}")
 
     lines.extend(_encode_pts(shape.points, "P", prec))
     if shape.motions:
@@ -399,8 +397,8 @@ def _decode_shape(lines, defaults):
             c = int(parts[1])
             i += 1
         elif cmd == "o":
-            raw = parts[1].strip() if len(parts) > 1 else "null"
-            o = None if raw == "null" else json.loads(raw)
+            raw = parts[1].strip() if len(parts) > 1 else ""
+            o = from_snbt(raw) if raw else None
             i += 1
         elif cmd == "P":
             points, i = _decode_pts(lines, i)

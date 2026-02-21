@@ -9,6 +9,7 @@ from typing import List
 
 from .shape import ParticleShape
 from .animation import ParticleAnimation
+from .snbt import to_snbt
 
 
 class ParticleCompiler:
@@ -18,43 +19,15 @@ class ParticleCompiler:
     """
 
     # ----------------------------------------------------------
-    #  SNBT 序列化
+    #  粒子类型格式化
     # ----------------------------------------------------------
-
-    @staticmethod
-    def _to_snbt(value) -> str:
-        """将 Python 值转为 SNBT 字符串。"""
-        if isinstance(value, bool):
-            return "true" if value else "false"
-        if isinstance(value, int):
-            return str(value)
-        if isinstance(value, float):
-            # 保证浮点数始终有小数点
-            s = f"{value:.4f}".rstrip("0")
-            if s.endswith("."):
-                s += "0"
-            return s
-        if isinstance(value, str):
-            return f'"{value}"'
-        if isinstance(value, (list, tuple)):
-            items = ",".join(ParticleCompiler._to_snbt(v) for v in value)
-            return f"[{items}]"
-        if isinstance(value, dict):
-            pairs = ",".join(
-                f"{k}:{ParticleCompiler._to_snbt(v)}" for k, v in value.items()
-            )
-            return f"{{{pairs}}}"
-        return str(value)
 
     @staticmethod
     def _fmt_particle(shape: ParticleShape) -> str:
         """格式化粒子类型字符串，含 SNBT 选项（如有）。"""
         if not shape.options:
             return shape.particle
-        pairs = ",".join(
-            f"{k}:{ParticleCompiler._to_snbt(v)}" for k, v in shape.options.items()
-        )
-        return f"{shape.particle}{{{pairs}}}"
+        return f"{shape.particle}{to_snbt(shape.options)}"
 
     # ----------------------------------------------------------
     #  命令编译

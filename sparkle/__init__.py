@@ -8,7 +8,7 @@ from .shape import ParticleShape, Point3D
 from .animation import ParticleAnimation
 from .compiler import ParticleCompiler
 from .sps import save as save_sps, load as load_sps
-from .options import dust, dust_transition, block_particle, item_particle, entity_effect
+from .optioned import dust, dust_transition, block_particle, item_particle, entity_effect
 from .primitives import (
     circle,
     sphere,

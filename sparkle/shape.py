@@ -28,14 +28,13 @@ class ParticleShape:
         self.speed = speed
         self.count = count
         self.motions = motions  # 不为 None 时启用逐点运动模式 (count=0)
-        self.options = options  # 粒子选项字典（SNBT 格式附加参数）
+        self.options = options  # 粒子选项字典，如 {"color": [1.0, 0.0, 0.0], "scale": 2.0}
 
     def _copy(self) -> "ParticleShape":
-        import copy
         return ParticleShape(
             list(self.points), self.particle, self.delta, self.speed, self.count,
             list(self.motions) if self.motions is not None else None,
-            copy.deepcopy(self.options) if self.options is not None else None,
+            self.options,
         )
 
     # ----------------------------------------------------------
@@ -100,10 +99,10 @@ class ParticleShape:
     #  粒子选项
     # ----------------------------------------------------------
 
-    def with_options(self, **kwargs) -> "ParticleShape":
-        """返回带粒子选项的新实例，用于 SNBT 格式粒子参数。"""
+    def with_options(self, options: dict) -> "ParticleShape":
+        """返回带粒子选项的新实例。options: 选项字典。"""
         new = self._copy()
-        new.options = dict(kwargs)
+        new.options = options
         return new
 
     # ----------------------------------------------------------

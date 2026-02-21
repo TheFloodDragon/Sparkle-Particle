@@ -22,9 +22,11 @@ Sparkle/
 │   ├── animation.py             # ParticleAnimation — 多帧动画编排
 │   ├── primitives.py            # 几何图元工厂函数
 │   ├── compiler.py              # ParticleCompiler — 命令编译与 .mcfunction 输出
-│   └── sps.py                   # SPS 格式编解码器
+│   ├── sps.py                   # SPS 格式编解码器
+│   ├── snbt.py                  # SNBT 序列化与反序列化
+│   └── optioned.py              # 粒子选项工厂函数
 ├── particle_generator.py        # 示例程序（40+ 案例）
-├── test_sps.py                  # SPS 格式往返测试
+├── test_sps.py                  # SPS / SNBT 格式往返测试
 └── output/                      # 生成的文件
 ```
 
@@ -120,6 +122,34 @@ shape.with_tangent_motion(speed)                # 沿切线流动
 shape.with_custom_motion(func, speed)           # 自定义运动函数
 ```
 
+### ParticleShape — 粒子选项
+
+```python
+# 直接传入选项字典
+shape = ParticleShape(
+    points=[(0, 0, 0)],
+    particle="minecraft:dust",
+    options={"color": [1.0, 0.0, 0.0], "scale": 2.0},
+)
+
+# 或使用工厂函数
+from sparkle import dust, block_particle
+p_type, p_opts = dust(color="#FF0000", scale=2.0)
+
+# 或用 with_options 链式调用
+shape = circle(radius=3).with_options({"color": [1.0, 0.0, 0.0], "scale": 2.0})
+```
+
+可用的选项工厂函数（`optioned.py`）：
+
+| 函数 | 说明 |
+|------|------|
+| `dust(color, scale)` | 灰尘粒子 |
+| `dust_transition(from_color, to_color, scale)` | 渐变灰尘粒子 |
+| `block_particle(block_state)` | 方块粒子 |
+| `item_particle(item)` | 物品粒子 |
+| `entity_effect(color, alpha)` | 实体效果粒子 |
+
 ### ParticleShape — 图形组合
 
 ```python
@@ -154,6 +184,29 @@ ParticleCompiler.save(shape, "output/my_effect")                              # 
 ParticleCompiler.save(shape, "output/my_effect", prec=6)                      # 自定义精度（小数位数）
 ParticleCompiler.save_animation(anim, "output/my_anim", func_path="p:anim")  # 保存动画文件包
 commands = ParticleCompiler.compile(shape)                                     # 仅生成命令列表
+```
+
+### SNBT — 序列化
+
+`snbt.py` 提供 SNBT 格式的序列化与反序列化，用于粒子选项的编解码：
+
+```python
+from sparkle.snbt import to_snbt, from_snbt
+
+# Python → SNBT
+to_snbt({"color": [1.0, 0.0, 0.0], "scale": 2.0})
+# → '{color:[1.0d,0.0d,0.0d],scale:2.0d}'
+
+to_snbt(True)    # → '1b'（布尔转字节）
+to_snbt(1.5)     # → '1.5d'（浮点精确保存，带 d 后缀）
+to_snbt(42)      # → '42'
+
+# SNBT → Python（仅带后缀的数值被解析为数字）
+from_snbt('{color:[1.0d,0.0d,0.0d],scale:2.0d}')
+# → {"color": [1.0, 0.0, 0.0], "scale": 2.0}
+
+from_snbt('42')      # → '42'（无后缀，返回字符串）
+from_snbt('42i')     # → 42（有后缀，返回整数）
 ```
 
 ### SPS 格式 — 紧凑粒子数据存储

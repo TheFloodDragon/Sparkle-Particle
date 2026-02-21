@@ -4,7 +4,7 @@
 用于 Minecraft 1.20.5+ 的粒子参数配置。
 
 用法示例:
-    from sparkle.options import dust
+    from sparkle.optioned import dust
     p_type, p_opts = dust(color="#FF0000", scale=2.0)
     shape = circle(radius=3, particle=p_type).with_options(**p_opts)
 """
