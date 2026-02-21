@@ -26,6 +26,11 @@ from sparkle import (
     octahedron,
     dodecahedron,
     icosahedron,
+    dust,
+    dust_transition,
+    block_particle,
+    item_particle,
+    entity_effect,
 )
 
 
@@ -774,6 +779,60 @@ def main():
     ParticleCompiler.save_animation(
         ParticleAnimation.expanding(dna_decorated, duration=60, fade_out=0),
         f"{output_dir}/anim_dna_decorated", func_path="p:anim_dna_deco", loop=True,
+    )
+
+    # ================================================================
+    #  11. 粒子选项（SNBT 参数）
+    # ================================================================
+
+    print("\n=== 11. 粒子选项 ===")
+
+    # 11-1 红色灰尘圆环
+    p_type, p_opts = dust(color="#FF0000", scale=2.0)
+    ParticleCompiler.save(
+        circle(radius=3, points=80, particle=p_type).with_options(**p_opts),
+        f"{output_dir}/dust_circle",
+    )
+
+    # 11-2 渐变灰尘球体（红→蓝）
+    p_type, p_opts = dust_transition(from_color="#FF0000", to_color="#0000FF", scale=1.5)
+    ParticleCompiler.save(
+        sphere(radius=3, u_points=24, v_points=12, particle=p_type).with_options(**p_opts).offset(y=5),
+        f"{output_dir}/dust_transition_sphere",
+    )
+
+    # 11-3 方块粒子螺旋
+    p_type, p_opts = block_particle("minecraft:diamond_block")
+    ParticleCompiler.save(
+        helix(radius=2, height=8, turns=3, points=200, particle=p_type).with_options(**p_opts),
+        f"{output_dir}/block_helix",
+    )
+
+    # 11-4 物品粒子星形
+    p_type, p_opts = item_particle("minecraft:nether_star")
+    ParticleCompiler.save(
+        star(outer_r=4, inner_r=1.5, n_points=5, samples=300, particle=p_type).with_options(**p_opts).offset(y=3),
+        f"{output_dir}/item_star",
+    )
+
+    # 11-5 实体效果粒子心形（带半透明紫色）
+    p_type, p_opts = entity_effect(color="#AA00FF", alpha=0.6)
+    ParticleCompiler.save(
+        heart(size=4, points=160, particle=p_type).with_options(**p_opts).offset(y=5),
+        f"{output_dir}/entity_effect_heart",
+    )
+
+    # 11-6 彩虹灰尘环动画（颜色随时间渐变）
+    def rainbow_dust_ring(progress):
+        import colorsys
+        r, g, b = colorsys.hsv_to_rgb(progress, 1.0, 1.0)
+        p_type, p_opts = dust(color=(r, g, b), scale=1.5)
+        return circle(radius=3 + math.sin(progress * 4 * math.pi), points=100,
+                      particle=p_type).with_options(**p_opts).offset(y=3)
+
+    ParticleCompiler.save_animation(
+        ParticleAnimation.expanding(rainbow_dust_ring, duration=60, fade_out=0),
+        f"{output_dir}/anim_rainbow_dust", func_path="p:anim_rainbow_dust", loop=True,
     )
 
     # ================================================================

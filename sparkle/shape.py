@@ -20,6 +20,7 @@ class ParticleShape:
         speed: float = 0,
         count: int = 1,
         motions: Optional[List[Point3D]] = None,
+        options: Optional[dict] = None,
     ):
         self.points: List[Point3D] = points or []
         self.particle = particle
@@ -27,11 +28,14 @@ class ParticleShape:
         self.speed = speed
         self.count = count
         self.motions = motions  # 不为 None 时启用逐点运动模式 (count=0)
+        self.options = options  # 粒子选项字典（SNBT 格式附加参数）
 
     def _copy(self) -> "ParticleShape":
+        import copy
         return ParticleShape(
             list(self.points), self.particle, self.delta, self.speed, self.count,
             list(self.motions) if self.motions is not None else None,
+            copy.deepcopy(self.options) if self.options is not None else None,
         )
 
     # ----------------------------------------------------------
@@ -90,6 +94,16 @@ class ParticleShape:
         new = self._copy()
         new.motions = [func(px, py, pz) for px, py, pz in new.points]
         new.speed = speed
+        return new
+
+    # ----------------------------------------------------------
+    #  粒子选项
+    # ----------------------------------------------------------
+
+    def with_options(self, **kwargs) -> "ParticleShape":
+        """返回带粒子选项的新实例，用于 SNBT 格式粒子参数。"""
+        new = self._copy()
+        new.options = dict(kwargs)
         return new
 
     # ----------------------------------------------------------
@@ -165,7 +179,7 @@ class ParticleShape:
             self_m = self.motions if self.motions is not None else [(0, 0, 0)] * len(self.points)
             other_m = other.motions if other.motions is not None else [(0, 0, 0)] * len(other.points)
             combined_motions = self_m + other_m
-        return ParticleShape(combined_points, self.particle, self.delta, self.speed, self.count, combined_motions)
+        return ParticleShape(combined_points, self.particle, self.delta, self.speed, self.count, combined_motions, self.options)
 
     def __add__(self, other: "ParticleShape") -> "ParticleShape":
         return self.merge(other)
@@ -184,4 +198,4 @@ class ParticleShape:
         indices = [int(i * step) % len(self.points) for i in range(n)]
         new_points = [self.points[i] for i in indices]
         new_motions = [self.motions[i] for i in indices] if self.motions is not None else None
-        return ParticleShape(new_points, self.particle, self.delta, self.speed, self.count, new_motions)
+        return ParticleShape(new_points, self.particle, self.delta, self.speed, self.count, new_motions, self.options)

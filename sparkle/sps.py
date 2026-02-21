@@ -15,10 +15,12 @@ SPS (Sparkle Particle Storage) 格式编解码器。
     <dx> <dy> <dz>             增量行（无前缀；轴省略模式下省一个分量）
     = <k> <n>                  模式游程：重复上 k 行增量 n 次
     M <x> <y> <z>              运动向量起点（绝对，始终 3D）
+    o <json>                    粒子选项（JSON 格式，仅变化时写出；null 表示清除）
     > <tick>                    动画帧标记（刻）
     # ...                       注释行
 """
 
+import json
 import os
 
 from .shape import ParticleShape, Point3D
@@ -218,7 +220,8 @@ def _encode_shape(shape, prec, prev=None):
     cd = shape.delta
     cv = shape.speed
     cc = shape.count
-    state = {"t": sp, "d": cd, "v": cv, "c": cc}
+    co = shape.options
+    state = {"t": sp, "d": cd, "v": cv, "c": cc, "o": co}
 
     # 粒子类型增量编码
     if prev is None or sp != prev["t"]:
@@ -231,6 +234,8 @@ def _encode_shape(shape, prec, prev=None):
             lines.append(f"v {_fmt(cv, prec)}")
         if cc != 1:
             lines.append(f"c {cc}")
+        if co is not None:
+            lines.append(f"o {json.dumps(co, ensure_ascii=False, separators=(',', ':'))}")
     else:
         if cd != prev["d"]:
             lines.append(f"d {_fmt3(cd, prec)}")
@@ -238,6 +243,11 @@ def _encode_shape(shape, prec, prev=None):
             lines.append(f"v {_fmt(cv, prec)}")
         if cc != prev["c"]:
             lines.append(f"c {cc}")
+        if co != prev.get("o"):
+            if co is not None:
+                lines.append(f"o {json.dumps(co, ensure_ascii=False, separators=(',', ':'))}")
+            else:
+                lines.append("o null")
 
     lines.extend(_encode_pts(shape.points, "P", prec))
     if shape.motions:
@@ -294,7 +304,7 @@ def save(data, filename, precision=4):
 #  解码（SPS 文本 → Python 对象）
 # ============================================================
 
-_DEFAULTS = {"t": "flame", "d": (0, 0, 0), "v": 0.0, "c": 1}
+_DEFAULTS = {"t": "flame", "d": (0, 0, 0), "v": 0.0, "c": 1, "o": None}
 
 
 def _is_data_line(line):
@@ -363,6 +373,7 @@ def _decode_shape(lines, defaults):
     d = defaults["d"]
     v = defaults["v"]
     c = defaults["c"]
+    o = defaults.get("o")
     points = []
     motions = []
 
@@ -387,6 +398,10 @@ def _decode_shape(lines, defaults):
         elif cmd == "c":
             c = int(parts[1])
             i += 1
+        elif cmd == "o":
+            raw = parts[1].strip() if len(parts) > 1 else "null"
+            o = None if raw == "null" else json.loads(raw)
+            i += 1
         elif cmd == "P":
             points, i = _decode_pts(lines, i)
         elif cmd == "M":
@@ -395,7 +410,7 @@ def _decode_shape(lines, defaults):
             i += 1
 
     particle = p if ":" in p else f"minecraft:{p}"
-    state = {"t": p, "d": d, "v": v, "c": c}
+    state = {"t": p, "d": d, "v": v, "c": c, "o": o}
     return ParticleShape(
         points=points,
         particle=particle,
@@ -403,6 +418,7 @@ def _decode_shape(lines, defaults):
         speed=_numify(v),
         count=c,
         motions=motions or None,
+        options=o,
     ), state
 
 

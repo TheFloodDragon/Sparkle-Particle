@@ -18,6 +18,45 @@ class ParticleCompiler:
     """
 
     # ----------------------------------------------------------
+    #  SNBT 序列化
+    # ----------------------------------------------------------
+
+    @staticmethod
+    def _to_snbt(value) -> str:
+        """将 Python 值转为 SNBT 字符串。"""
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, int):
+            return str(value)
+        if isinstance(value, float):
+            # 保证浮点数始终有小数点
+            s = f"{value:.4f}".rstrip("0")
+            if s.endswith("."):
+                s += "0"
+            return s
+        if isinstance(value, str):
+            return f'"{value}"'
+        if isinstance(value, (list, tuple)):
+            items = ",".join(ParticleCompiler._to_snbt(v) for v in value)
+            return f"[{items}]"
+        if isinstance(value, dict):
+            pairs = ",".join(
+                f"{k}:{ParticleCompiler._to_snbt(v)}" for k, v in value.items()
+            )
+            return f"{{{pairs}}}"
+        return str(value)
+
+    @staticmethod
+    def _fmt_particle(shape: ParticleShape) -> str:
+        """格式化粒子类型字符串，含 SNBT 选项（如有）。"""
+        if not shape.options:
+            return shape.particle
+        pairs = ",".join(
+            f"{k}:{ParticleCompiler._to_snbt(v)}" for k, v in shape.options.items()
+        )
+        return f"{shape.particle}{{{pairs}}}"
+
+    # ----------------------------------------------------------
     #  命令编译
     # ----------------------------------------------------------
 
@@ -31,19 +70,20 @@ class ParticleCompiler:
     def compile(shape: ParticleShape, prec: int = 4) -> List[str]:
         """将 ParticleShape 编译为 Minecraft particle 命令列表。"""
         fmt = ParticleCompiler._fmt_coord
+        particle_str = ParticleCompiler._fmt_particle(shape)
         commands = []
         for i, (px, py, pz) in enumerate(shape.points):
             if shape.motions is not None:
                 mx, my, mz = shape.motions[i]
                 cmd = (
-                    f"particle {shape.particle} "
+                    f"particle {particle_str} "
                     f"{fmt(px, prec)} {fmt(py, prec)} {fmt(pz, prec)} "
                     f"{mx:.{prec}f} {my:.{prec}f} {mz:.{prec}f} {shape.speed} 0"
                 )
             else:
                 dx, dy, dz = shape.delta
                 cmd = (
-                    f"particle {shape.particle} "
+                    f"particle {particle_str} "
                     f"{fmt(px, prec)} {fmt(py, prec)} {fmt(pz, prec)} "
                     f"{dx} {dy} {dz} {shape.speed} {shape.count}"
                 )
