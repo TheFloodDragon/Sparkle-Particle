@@ -159,7 +159,8 @@ class ParticleCompiler:
             with open(frame_file, "w", encoding="utf-8") as f:
                 for cmd in frame_cmds:
                     f.write(cmd + "\n")
-                if i + 1 == len(sorted_ticks):
+                # 闈炲惊鐜姩鐢诲湪鏈€鍚庝竴甯ф竻鐞嗛敋鐐癸紱寰幆鍔ㄧ敾闇€淇濈暀閿氱偣
+                if i + 1 == len(sorted_ticks) and not loop:
                     f.write(f"kill @e[tag={tag}]\n")
 
         # 入口文件
