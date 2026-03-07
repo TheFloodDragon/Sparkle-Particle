@@ -448,16 +448,19 @@ check("anim opts frame 1 (same, inherited)",
       la3.frames[1].options == {"color": [1.0, 0.0, 0.0], "scale": 1.0})
 check("anim opts frame 2 (changed)",
       la3.frames[2].options == {"color": [0.0, 1.0, 0.0], "scale": 2.0})
-check("anim opts frame 3 (inherited, null removed)",
-      la3.frames[3].options == {"color": [0.0, 1.0, 0.0], "scale": 2.0})
+check("anim opts frame 3 (explicit cleared)",
+      la3.frames[3].options is None)
 
-# 验证 o 行增量编码（帧1相同不重复，帧2变化写出，帧3 无选项不写出）
+# 验证 o 行增量编码（帧1相同不重复，帧2变化写出，帧3 显式清除写出 o -）
 with open("output_test/test_anim_opts.sps", "r") as f:
     anim_opts_text = f.read()
 anim_o_lines = [l.strip() for l in anim_opts_text.split("\n") if l.strip().startswith("o ")]
-check("o lines count = 2 (initial + change)",
-      len(anim_o_lines) == 2,
+check("o lines count = 3 (initial + change + clear)",
+      len(anim_o_lines) == 3,
       f"got {len(anim_o_lines)}: {anim_o_lines}")
+check("o clear marker exists",
+      "o -" in anim_o_lines,
+      f"got {anim_o_lines}")
 
 # ==============================================================
 print("=" * 62)

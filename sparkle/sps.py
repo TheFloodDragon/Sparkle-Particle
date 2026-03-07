@@ -246,6 +246,8 @@ def _encode_shape(shape, prec, prev=None):
         if co != prev.get("o"):
             if co is not None:
                 lines.append(f"o {to_snbt(co)}")
+            else:
+                lines.append("o -")
 
     lines.extend(_encode_pts(shape.points, "P", prec))
     if shape.motions:
@@ -398,7 +400,10 @@ def _decode_shape(lines, defaults):
             i += 1
         elif cmd == "o":
             raw = parts[1].strip() if len(parts) > 1 else ""
-            o = from_snbt(raw) if raw else None
+            if raw == "-":
+                o = None
+            else:
+                o = from_snbt(raw) if raw else None
             i += 1
         elif cmd == "P":
             points, i = _decode_pts(lines, i)

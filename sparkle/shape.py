@@ -3,6 +3,7 @@
 纯几何模块，不包含任何 Minecraft 特定逻辑。
 """
 
+import copy
 import math
 from typing import Callable, List, Optional, Tuple
 
@@ -34,7 +35,7 @@ class ParticleShape:
         return ParticleShape(
             list(self.points), self.particle, self.delta, self.speed, self.count,
             list(self.motions) if self.motions is not None else None,
-            self.options,
+            copy.deepcopy(self.options) if self.options is not None else None,
         )
 
     # ----------------------------------------------------------
@@ -69,19 +70,30 @@ class ParticleShape:
     def with_tangent_motion(self, speed: float = 1.0, axis: str = "y") -> "ParticleShape":
         """
         为每个粒子设置切线方向运动（沿曲线流动效果）。
-        axis: 用于计算切线的旋转轴 ('x', 'y', 'z')。
+        axis: 用于定义切线方向的旋转轴 ('x', 'y', 'z')。
         """
+        if axis not in ("x", "y", "z"):
+            raise ValueError(f"axis 必须是 'x'、'y' 或 'z'，实际为: {axis}")
+
         new = self._copy()
         new.motions = []
-        for i, (px, py, pz) in enumerate(new.points):
-            j = (i + 1) % len(new.points)
-            nx, ny, nz = new.points[j]
-            dx, dy, dz = nx - px, ny - py, nz - pz
-            length = math.sqrt(dx * dx + dy * dy + dz * dz)
-            if length > 0:
-                new.motions.append((dx / length, dy / length, dz / length))
+        for px, py, pz in new.points:
+            if axis == "x":
+                # t = axis × r, axis=(1,0,0)
+                tx, ty, tz = 0.0, -pz, py
+            elif axis == "y":
+                # t = axis × r, axis=(0,1,0)
+                tx, ty, tz = pz, 0.0, -px
             else:
-                new.motions.append((0, 0, 0))
+                # t = axis × r, axis=(0,0,1)
+                tx, ty, tz = -py, px, 0.0
+
+            length = math.sqrt(tx * tx + ty * ty + tz * tz)
+            if length > 0:
+                new.motions.append((tx / length, ty / length, tz / length))
+            else:
+                new.motions.append((0.0, 0.0, 0.0))
+
         new.speed = speed
         return new
 
@@ -192,9 +204,13 @@ class ParticleShape:
         按密度比例均匀采样粒子点，返回新的 ParticleShape。
         density: 0.0~1.0，1.0 表示全部保留。
         """
-        n = max(1, int(len(self.points) * max(0.0, min(1.0, density))))
-        step = len(self.points) / n
-        indices = [int(i * step) % len(self.points) for i in range(n)]
+        total = len(self.points)
+        if total == 0:
+            return ParticleShape([], self.particle, self.delta, self.speed, self.count, None, self.options)
+
+        n = max(1, int(total * max(0.0, min(1.0, density))))
+        step = total / n
+        indices = [int(i * step) % total for i in range(n)]
         new_points = [self.points[i] for i in indices]
         new_motions = [self.motions[i] for i in indices] if self.motions is not None else None
         return ParticleShape(new_points, self.particle, self.delta, self.speed, self.count, new_motions, self.options)
