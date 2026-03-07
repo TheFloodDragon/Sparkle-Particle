@@ -1,7 +1,8 @@
 """
 Minecraft .mcfunction 编译器。
 
-负责将 `ParticleShape` / `ParticleAnimation` 编译为粒子命令文件。
+负责将 ParticleShape / ParticleAnimation 编译为 particle 命令并输出为 .mcfunction 文件。
+所有 Minecraft 特定逻辑集中在此模块。
 """
 
 import os
@@ -13,14 +14,24 @@ from .snbt import to_snbt
 
 
 class ParticleCompiler:
-    """将 Sparkle 粒子数据编译并保存为 mcfunction 文件。"""
+    """
+    将 ParticleShape / ParticleAnimation 编译为 Minecraft particle 命令，
+    并输出为 .mcfunction 文件。
+    """
 
+    # ----------------------------------------------------------
+    #  粒子类型格式化
+    # ----------------------------------------------------------
     @staticmethod
     def _fmt_particle(shape: ParticleShape) -> str:
         """格式化粒子类型（包含可选 SNBT 选项）。"""
         if not shape.options:
             return shape.particle
         return f"{shape.particle}{to_snbt(shape.options)}"
+
+    # ----------------------------------------------------------
+    #  命令编译
+    # ----------------------------------------------------------
 
     @staticmethod
     def _fmt_coord(v: float, prec: int = 4) -> str:
@@ -30,7 +41,7 @@ class ParticleCompiler:
 
     @staticmethod
     def compile(shape: ParticleShape, prec: int = 4) -> List[str]:
-        """将一个 `ParticleShape` 编译为粒子命令列表。"""
+        """将 ParticleShape 编译为 Minecraft particle 命令列表。"""
         fmt = ParticleCompiler._fmt_coord
         particle_str = ParticleCompiler._fmt_particle(shape)
         commands: List[str] = []
@@ -54,11 +65,18 @@ class ParticleCompiler:
 
         return commands
 
+    # ----------------------------------------------------------
+    #  单帧文件输出
+    # ----------------------------------------------------------
+
     @staticmethod
     def save(shape: ParticleShape, filename: str, prec: int = 4) -> str:
         """
         保存单个 `ParticleShape` 到 `<filename>.mcfunction`。
 
+        filename: 输出文件路径（自动补 .mcfunction 后缀）
+        prec: 坐标小数位数（默认 4）
+        返回文件的绝对路径。
         返回输出文件的绝对路径。
         """
         if not filename.endswith(".mcfunction"):
@@ -68,13 +86,17 @@ class ParticleCompiler:
         commands = ParticleCompiler.compile(shape, prec)
 
         with open(filename, "w", encoding="utf-8") as f:
-            f.write("# 由 Sparkle 生成\n")
+            f.write(f"# 由 Sparkle 生成\n")
             f.write(f"# 粒子命令数: {len(commands)}\n\n")
             for cmd in commands:
                 f.write(cmd + "\n")
 
         print(f"已保存: {filename} ({len(commands)} 条命令)")
         return os.path.abspath(filename)
+
+    # ----------------------------------------------------------
+    #  动画文件输出
+    # ----------------------------------------------------------
 
     @staticmethod
     def save_animation(
@@ -151,7 +173,7 @@ class ParticleCompiler:
         first_frame_func = f"{func_path}/frames/{frame_ids[0]}"
         main_file = os.path.join(directory, "main.mcfunction")
         with open(main_file, "w", encoding="utf-8") as f:
-            f.write("# Sparkle 动画入口\n")
+            f.write("# 粒子动画入口 — 由 Sparkle 生成\n")
             f.write(
                 f"# 帧数: {len(sorted_ticks)}, 时长: {sorted_ticks[-1] + 1} ticks "
                 f"({(sorted_ticks[-1] + 1) / 20:.1f}s), 循环: {loop}\n"
@@ -163,7 +185,7 @@ class ParticleCompiler:
 
         stop_file = os.path.join(directory, "stop.mcfunction")
         with open(stop_file, "w", encoding="utf-8") as f:
-            f.write("# 停止动画并清理已调度帧\n")
+            f.write("# 停止粒子动画并移除锚点\n")
             for frame_name in frame_ids:
                 f.write(f"schedule clear {func_path}/frames/{frame_name}\n")
             f.write(f"kill @e[tag={tag}]\n")

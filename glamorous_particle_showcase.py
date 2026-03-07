@@ -7,6 +7,7 @@ current Sparkle API and exports it as mcfunction files.
 
 import colorsys
 import math
+
 from sparkle import (
     ParticleAnimation,
     ParticleCompiler,
