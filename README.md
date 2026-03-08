@@ -172,8 +172,6 @@ anim = ParticleAnimation.sequence([(0, shape_a), (20, shape_b), (40, shape_c)])
 ParticleCompiler.save_animation(anim, "output/anim_name", func_path="pack:anim_name", loop=True)
 ```
 
-动画保存时，每一帧只生成一个 `frame_XXXX.mcfunction` 文件，粒子命令与下一帧调度已合并，以减少文件数。
-
 ### ParticleCompiler — 编译与输出
 
 ```python

@@ -30,6 +30,10 @@ except ImportError as exc:
 
 DEFAULT_TEXT = "Sparkle|粒子文字"
 DEFAULT_FONT = "auto"
+DEFAULT_FONT_SIZE = 64
+DEFAULT_SAMPLE_STEP = 1
+DEFAULT_WORLD_STEP = 0.10
+DEFAULT_THRESHOLD = 40.0
 ANIM_DURATION = 80
 STATIC_OUTPUT = OUTPUT_ROOT / "text_particle_showcase"
 ANIM_OUTPUT = OUTPUT_ROOT / "text_particle_wave"
@@ -214,9 +218,9 @@ def bitmap_to_points(
     width: int,
     height: int,
     gray: bytes,
-    sample_step: int = 2,
-    world_step: float = 0.16,
-    threshold: float = 48.0,
+    sample_step: int = DEFAULT_SAMPLE_STEP,
+    world_step: float = DEFAULT_WORLD_STEP,
+    threshold: float = DEFAULT_THRESHOLD,
 ) -> list[tuple[float, float, float]]:
     """把灰度位图按网格采样为粒子点。"""
     sample_step = max(1, int(sample_step))
@@ -260,10 +264,10 @@ def center_shape(shape: ParticleShape) -> ParticleShape:
 def build_text_shape(
     text: str,
     font_spec: str = DEFAULT_FONT,
-    font_size: int = 96,
-    sample_step: int = 2,
-    world_step: float = 0.16,
-    threshold: float = 48.0,
+    font_size: int = DEFAULT_FONT_SIZE,
+    sample_step: int = DEFAULT_SAMPLE_STEP,
+    world_step: float = DEFAULT_WORLD_STEP,
+    threshold: float = DEFAULT_THRESHOLD,
     padding: int = 12,
     line_gap_px: int = 0,
     bold: bool = False,
@@ -319,10 +323,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="把任意 Unicode 文本转换为 Sparkle 粒子示例。")
     parser.add_argument("text", nargs="*", help="要转换的文本；可用 | 或 \\n 表示换行")
     parser.add_argument("--font", default=DEFAULT_FONT, help="字体路径、字体文件名或 auto（默认）")
-    parser.add_argument("--font-size", type=int, default=96, help="字体渲染尺寸（像素），越大越细")
-    parser.add_argument("--sample-step", type=int, default=2, help="采样步长（像素），越小越精细")
-    parser.add_argument("--world-step", type=float, default=0.16, help="每个采样单元在游戏中的间距")
-    parser.add_argument("--threshold", type=float, default=48.0, help="取样阈值 0~255，越小越保留边缘")
+    parser.add_argument("--font-size", type=int, default=DEFAULT_FONT_SIZE, help="字体渲染尺寸（像素），越大越细")
+    parser.add_argument("--sample-step", type=int, default=DEFAULT_SAMPLE_STEP, help="采样步长（像素），越小越精细")
+    parser.add_argument("--world-step", type=float, default=DEFAULT_WORLD_STEP, help="每个采样单元在游戏中的间距")
+    parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help="取样阈值 0~255，越小越保留边缘")
     parser.add_argument("--padding", type=int, default=12, help="文字位图四周留白（像素）")
     parser.add_argument("--line-gap-px", type=int, default=0, help="额外行距（像素）")
     parser.add_argument("--bold", action="store_true", help="使用描边模拟更粗的文字")

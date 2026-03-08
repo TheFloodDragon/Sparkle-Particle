@@ -134,10 +134,6 @@ class ParticleCompiler:
         frames_dir = os.path.join(directory, "frames")
         os.makedirs(frames_dir, exist_ok=True)
 
-        for name in os.listdir(frames_dir):
-            if name.endswith(".mcfunction") and (name.startswith("frame_") or name.startswith("particles_")):
-                os.remove(os.path.join(frames_dir, name))
-
         sorted_ticks = sorted(anim.frames.keys())
         if not sorted_ticks:
             print("警告: 动画无帧，已跳过保存。")
