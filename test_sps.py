@@ -264,6 +264,15 @@ save_sps(single, "output_test/test_single_pt")
 ls = load_sps("output_test/test_single_pt.sps")
 check("single point", cmds_match(single, ls))
 
+# mcfunction 数值紧凑格式
+compact_cmds = ParticleCompiler.compile(ParticleShape(
+    points=[(3.0, 0.0, -0.0), (1.23, -2.5, 0.1)],
+    delta=(0.0, 2.5000, -0.3000),
+    speed=0.2500,
+))
+check("compact coord zero", "particle minecraft:flame ~3 ~ ~ 0 2.5 -0.3 0.25 1" == compact_cmds[0], compact_cmds[0])
+check("compact coord trim zeros", "particle minecraft:flame ~1.23 ~-2.5 ~0.1 0 2.5 -0.3 0.25 1" == compact_cmds[1], compact_cmds[1])
+
 # 空点集
 empty = ParticleShape(points=[])
 save_sps(empty, "output_test/test_empty")

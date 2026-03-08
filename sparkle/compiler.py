@@ -35,14 +35,22 @@ class ParticleCompiler:
 
     @staticmethod
     def _fmt_num(v: float, prec: int = 4) -> str:
-        """格式化粒子命令中的数值，避免科学计数法与 -0.0000。"""
-        v = v if v != 0 else 0.0
-        return f"{v:.{prec}f}"
+        """格式化粒子命令中的数值，避免科学计数法、-0.0000 与多余尾零。"""
+        v = round(v, prec)
+        if v == 0:
+            return "0"
+        s = f"{v:.{prec}f}"
+        if "." in s:
+            s = s.rstrip("0").rstrip(".")
+        return s
 
     @staticmethod
     def _fmt_coord(v: float, prec: int = 4) -> str:
-        """格式化 Minecraft 粒子命令中的相对坐标。"""
-        return f"~{ParticleCompiler._fmt_num(v, prec)}"
+        """格式化 Minecraft 粒子命令中的相对坐标并省略多余 0。"""
+        s = ParticleCompiler._fmt_num(v, prec)
+        if s == "0":
+            return "~"
+        return f"~{s}"
 
     @staticmethod
     def compile(shape: ParticleShape, prec: int = 4) -> List[str]:
