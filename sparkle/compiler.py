@@ -34,15 +34,21 @@ class ParticleCompiler:
     # ----------------------------------------------------------
 
     @staticmethod
+    def _fmt_num(v: float, prec: int = 4) -> str:
+        """格式化粒子命令中的数值，避免科学计数法与 -0.0000。"""
+        v = v if v != 0 else 0.0
+        return f"{v:.{prec}f}"
+
+    @staticmethod
     def _fmt_coord(v: float, prec: int = 4) -> str:
         """格式化 Minecraft 粒子命令中的相对坐标。"""
-        v = v if v != 0 else 0.0
-        return f"~{v:.{prec}f}"
+        return f"~{ParticleCompiler._fmt_num(v, prec)}"
 
     @staticmethod
     def compile(shape: ParticleShape, prec: int = 4) -> List[str]:
         """将 ParticleShape 编译为 Minecraft particle 命令列表。"""
         fmt = ParticleCompiler._fmt_coord
+        num = ParticleCompiler._fmt_num
         particle_str = ParticleCompiler._fmt_particle(shape)
         commands: List[str] = []
 
@@ -52,14 +58,14 @@ class ParticleCompiler:
                 cmd = (
                     f"particle {particle_str} "
                     f"{fmt(px, prec)} {fmt(py, prec)} {fmt(pz, prec)} "
-                    f"{mx:.{prec}f} {my:.{prec}f} {mz:.{prec}f} {shape.speed} 0"
+                    f"{num(mx, prec)} {num(my, prec)} {num(mz, prec)} {num(shape.speed, prec)} 0"
                 )
             else:
                 dx, dy, dz = shape.delta
                 cmd = (
                     f"particle {particle_str} "
                     f"{fmt(px, prec)} {fmt(py, prec)} {fmt(pz, prec)} "
-                    f"{dx} {dy} {dz} {shape.speed} {shape.count}"
+                    f"{num(dx, prec)} {num(dy, prec)} {num(dz, prec)} {num(shape.speed, prec)} {shape.count}"
                 )
             commands.append(cmd)
 
@@ -136,6 +142,7 @@ class ParticleCompiler:
 
         tag = func_path.replace(":", "_").replace("/", "_")
         frame_ids: List[str] = []
+        total_ticks = sorted_ticks[-1] + 1
 
         for i, tick in enumerate(sorted_ticks):
             frame_name = f"frame_{tick:04d}"
@@ -161,7 +168,8 @@ class ParticleCompiler:
                 frame_cmds.append(f"schedule function {next_frame_func} {delay}t")
             elif loop:
                 first_frame_func = f"{func_path}/frames/frame_{sorted_ticks[0]:04d}"
-                frame_cmds.append(f"schedule function {first_frame_func} 1t")
+                delay = total_ticks - tick + sorted_ticks[0]
+                frame_cmds.append(f"schedule function {first_frame_func} {delay}t")
 
             frame_file = os.path.join(frames_dir, f"{frame_name}.mcfunction")
             with open(frame_file, "w", encoding="utf-8") as f:
@@ -175,13 +183,16 @@ class ParticleCompiler:
         with open(main_file, "w", encoding="utf-8") as f:
             f.write("# 粒子动画入口 — 由 Sparkle 生成\n")
             f.write(
-                f"# 帧数: {len(sorted_ticks)}, 时长: {sorted_ticks[-1] + 1} ticks "
-                f"({(sorted_ticks[-1] + 1) / 20:.1f}s), 循环: {loop}\n"
+                f"# 帧数: {len(sorted_ticks)}, 时长: {total_ticks} ticks "
+                f"({total_ticks / 20:.1f}s), 循环: {loop}\n"
             )
             f.write(f"# 停止命令: /function {func_path}/stop\n\n")
             f.write(f"kill @e[tag={tag}]\n")
             f.write(f'summon marker ~ ~ ~ {{Tags:["{tag}"]}}\n')
-            f.write(f"function {first_frame_func}\n")
+            if sorted_ticks[0] == 0:
+                f.write(f"function {first_frame_func}\n")
+            else:
+                f.write(f"schedule function {first_frame_func} {sorted_ticks[0]}t\n")
 
         stop_file = os.path.join(directory, "stop.mcfunction")
         with open(stop_file, "w", encoding="utf-8") as f:
@@ -194,7 +205,7 @@ class ParticleCompiler:
         loop_str = ", 循环" if loop else ""
         print(
             f"已保存动画: {directory}/ "
-            f"({len(sorted_ticks)} 帧, {sorted_ticks[-1] + 1} ticks, "
+            f"({len(sorted_ticks)} 帧, {total_ticks} ticks, "
             f"共 {total_cmds} 条粒子命令{loop_str})"
         )
         return os.path.abspath(directory)

@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 .claude/
+.narrafork/
 output*/
 CLAUDE.md
 AGENTS.md
+

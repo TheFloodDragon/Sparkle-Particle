@@ -23,13 +23,13 @@ class ParticleShape:
         motions: Optional[List[Point3D]] = None,
         options: Optional[dict] = None,
     ):
-        self.points: List[Point3D] = points or []
+        self.points: List[Point3D] = [tuple(p) for p in (points or [])]
         self.particle = particle
-        self.delta = delta
+        self.delta = tuple(delta)
         self.speed = speed
         self.count = count
-        self.motions = motions  # 不为 None 时启用逐点运动模式 (count=0)
-        self.options = options  # 粒子选项字典，如 {"color": [1.0, 0.0, 0.0], "scale": 2.0}
+        self.motions = [tuple(m) for m in motions] if motions is not None else None  # 不为 None 时启用逐点运动模式 (count=0)
+        self.options = copy.deepcopy(options) if options is not None else None  # 粒子选项字典，如 {"color": [1.0, 0.0, 0.0], "scale": 2.0}
 
     def _copy(self) -> "ParticleShape":
         return ParticleShape(
@@ -114,7 +114,7 @@ class ParticleShape:
     def with_options(self, options: dict) -> "ParticleShape":
         """返回带粒子选项的新实例。options: 选项字典。"""
         new = self._copy()
-        new.options = options
+        new.options = copy.deepcopy(options) if options is not None else None
         return new
 
     # ----------------------------------------------------------
@@ -205,10 +205,12 @@ class ParticleShape:
         density: 0.0~1.0，1.0 表示全部保留。
         """
         total = len(self.points)
-        if total == 0:
+        density = max(0.0, min(1.0, density))
+        if total == 0 or density <= 0.0:
             return ParticleShape([], self.particle, self.delta, self.speed, self.count, None, self.options)
 
-        n = max(1, int(total * max(0.0, min(1.0, density))))
+        n = max(1, int(total * density))
+        n = min(total, n)
         step = total / n
         indices = [int(i * step) % total for i in range(n)]
         new_points = [self.points[i] for i in indices]

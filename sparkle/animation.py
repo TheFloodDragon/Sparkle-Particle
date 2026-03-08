@@ -40,10 +40,16 @@ class ParticleAnimation:
         for tick in range(duration):
             density = 1.0
             if fade_in > 0 and tick < fade_in:
-                density = (tick + 1) / fade_in
+                if fade_in == 1:
+                    density = 1.0
+                else:
+                    density = tick / (fade_in - 1)
             if fade_out > 0 and tick >= duration - fade_out:
-                density = (duration - tick) / fade_out
-            density = max(0.01, min(1.0, density))
+                if fade_out == 1:
+                    density = 0.0
+                else:
+                    density = min(density, (duration - 1 - tick) / (fade_out - 1))
+            density = max(0.0, min(1.0, density))
             anim.frames[tick] = shape.sampled(density)
         return anim
 
@@ -66,8 +72,11 @@ class ParticleAnimation:
             progress = tick / max(1, duration - 1)
             frame = shape_func(progress)
             if fade_out > 0 and tick >= duration - fade_out:
-                density = (duration - tick) / fade_out
-                frame = frame.sampled(max(0.01, density))
+                if fade_out == 1:
+                    density = 0.0
+                else:
+                    density = (duration - 1 - tick) / (fade_out - 1)
+                frame = frame.sampled(max(0.0, density))
             anim.frames[tick] = frame
         return anim
 

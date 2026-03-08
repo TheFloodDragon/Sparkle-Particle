@@ -13,6 +13,41 @@ SNBT (Stringified Named Binary Tag) 序列化与反序列化工具。
 #  序列化（Python → SNBT）
 # ============================================================
 
+_SAFE_UNQUOTED_KEY_CHARS = set(
+    "abcdefghijklmnopqrstuvwxyz"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "0123456789._+-"
+)
+
+_ESCAPE_MAP_REVERSE = {
+    "\\": "\\\\",
+    '"': '\\"',
+    "\b": "\\b",
+    "\f": "\\f",
+    "\n": "\\n",
+    "\r": "\\r",
+    "\t": "\\t",
+}
+
+
+def _escape_string(value: str) -> str:
+    parts = []
+    for ch in value:
+        if ch in _ESCAPE_MAP_REVERSE:
+            parts.append(_ESCAPE_MAP_REVERSE[ch])
+        elif ord(ch) < 0x20:
+            parts.append(f"\\u{ord(ch):04X}")
+        else:
+            parts.append(ch)
+    return "".join(parts)
+
+
+def _fmt_key(key) -> str:
+    key = str(key)
+    if key and all(ch in _SAFE_UNQUOTED_KEY_CHARS for ch in key):
+        return key
+    return f'"{_escape_string(key)}"'
+
 
 def to_snbt(value) -> str:
     """将 Python 值递归转为 SNBT 字符串。布尔转字节，浮点精确保存带 d 后缀。"""
@@ -23,12 +58,11 @@ def to_snbt(value) -> str:
     if isinstance(value, float):
         return repr(value) + "d"
     if isinstance(value, str):
-        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-        return f'"{escaped}"'
+        return f'"{_escape_string(value)}"'
     if isinstance(value, (list, tuple)):
         return "[" + ",".join(to_snbt(v) for v in value) + "]"
     if isinstance(value, dict):
-        return "{" + ",".join(f"{k}:{to_snbt(v)}" for k, v in value.items()) + "}"
+        return "{" + ",".join(f"{_fmt_key(k)}:{to_snbt(v)}" for k, v in value.items()) + "}"
     return str(value)
 
 

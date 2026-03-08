@@ -40,11 +40,14 @@ def sphere(
     particle: str = "minecraft:end_rod",
 ) -> ParticleShape:
     """生成球体表面。"""
+    if u_points <= 0 or v_points <= 0:
+        return ParticleShape([], particle)
+
     pts = []
     for i in range(u_points):
         u = 2 * math.pi * i / u_points
         for j in range(v_points):
-            v = math.pi * j / (v_points - 1)
+            v = 0.0 if v_points == 1 else math.pi * j / (v_points - 1)
             x = radius * math.sin(v) * math.cos(u)
             y = radius * math.cos(v)
             z = radius * math.sin(v) * math.sin(u)
@@ -60,11 +63,18 @@ def helix(
     particle: str = "minecraft:flame",
 ) -> ParticleShape:
     """生成螺旋线。"""
+    if points <= 0:
+        return ParticleShape([], particle)
+
     pts = []
     for i in range(points):
-        t = turns * 2 * math.pi * i / (points - 1)
+        if points == 1:
+            t = 0.0
+            y = 0.0
+        else:
+            t = turns * 2 * math.pi * i / (points - 1)
+            y = height * i / (points - 1)
         x = radius * math.cos(t)
-        y = height * i / (points - 1)
         z = radius * math.sin(t)
         pts.append((x, y, z))
     return ParticleShape(pts, particle)
@@ -93,9 +103,12 @@ def sine_wave(
     particle: str = "minecraft:flame",
 ) -> ParticleShape:
     """生成正弦波（沿 X 轴延伸，Y 轴振荡）。"""
+    if points <= 0:
+        return ParticleShape([], particle)
+
     pts = []
     for i in range(points):
-        x = length * i / (points - 1)
+        x = 0.0 if points == 1 else length * i / (points - 1)
         y = amplitude * math.sin(2 * math.pi * x / wavelength)
         pts.append((x, y, 0.0))
     return ParticleShape(pts, particle)

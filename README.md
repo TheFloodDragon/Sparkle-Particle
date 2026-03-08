@@ -91,11 +91,11 @@ ParticleCompiler.save(circle(radius=3, points=80), "output/circle")
 | `parametric_curve(func, t_range, points, particle)` | 自定义参数曲线 |
 | `parametric_surface(func, u_range, v_range, u_points, v_points, particle)` | 自定义参数曲面 |
 | `polygon(n, radius, axis, particle)` | 正多边形线框 |
-| `tetrahedron(size, samples_per_edge, particle)` | 正四面体线框 |
-| `cube(size, samples_per_edge, particle)` | 正六面体（立方体）线框 |
-| `octahedron(size, samples_per_edge, particle)` | 正八面体线框 |
-| `dodecahedron(size, samples_per_edge, particle)` | 正十二面体线框 |
-| `icosahedron(size, samples_per_edge, particle)` | 正二十面体线框 |
+| `tetrahedron(size, points_per_edge, particle)` | 正四面体线框 |
+| `cube(size, points_per_edge, particle)` | 正六面体（立方体）线框 |
+| `octahedron(size, points_per_edge, particle)` | 正八面体线框 |
+| `dodecahedron(size, points_per_edge, particle)` | 正十二面体线框 |
+| `icosahedron(size, points_per_edge, particle)` | 正二十面体线框 |
 
 ### ParticleShape — 空间变换
 

@@ -22,6 +22,7 @@ from sparkle import (
     star,
     torus,
     line,
+    sine_wave,
 )
 
 PASS = 0
@@ -168,8 +169,28 @@ check("speed",    lc.speed == 0.5,                    f"got {lc.speed}")
 check("count",    lc.count == 3,                      f"got {lc.count}")
 check("commands", cmds_match(custom, lc),             first_diff(custom, lc))
 
-# ------ 4. 动画往返 ------
-print("\n--- 4. 动画往返 ---")
+# ------ 4. 组合图形与不可变性 ------
+print("\n--- 4. 组合图形与不可变性 ---")
+
+raw_points = [(0, 0, 0)]
+raw_options = {"nested": {"scale": 1.0}}
+immutable_shape = ParticleShape(points=raw_points, options=raw_options)
+raw_points.append((1, 1, 1))
+raw_options["nested"]["scale"] = 2.0
+check("ctor copies points", immutable_shape.points == [(0, 0, 0)], f"got {immutable_shape.points}")
+check("ctor deep-copies options",
+      immutable_shape.options == {"nested": {"scale": 1.0}},
+      f"got {immutable_shape.options}")
+
+sample_src = ParticleShape(points=[(0, 0, 0), (1, 0, 0)], options={"nested": {"scale": 1.0}})
+sampled = sample_src.sampled(1.0)
+sampled.options["nested"]["scale"] = 3.0
+check("sampled deep-copies options",
+      sample_src.options == {"nested": {"scale": 1.0}},
+      f"got {sample_src.options}")
+
+# ------ 5. 动画往返 ------
+print("\n--- 5. 动画往返 ---")
 
 anim = ParticleAnimation.static(
     heart(size=3, points=80, particle="minecraft:heart").offset(y=5),
@@ -186,8 +207,24 @@ for t in sorted(anim.frames):
 if anim_ok:
     check("anim all frames", True)
 
-# ------ 5. 动画粒子类型增量编码 ------
-print("\n--- 5. 粒子类型增量编码 ---")
+anim_abs = ParticleAnimation.sequence([
+    (5, circle(radius=1, points=1)),
+    (10, circle(radius=1, points=1).offset(y=1)),
+])
+ParticleCompiler.save_animation(anim_abs, "output_test/test_anim_abs", func_path="p:test_anim_abs", loop=True)
+with open("output_test/test_anim_abs/main.mcfunction", "r", encoding="utf-8") as f:
+    main_text = f.read()
+with open("output_test/test_anim_abs/frames/frame_0010.mcfunction", "r", encoding="utf-8") as f:
+    last_frame_text = f.read()
+check("anim absolute first tick delayed",
+      "schedule function p:test_anim_abs/frames/frame_0005 5t" in main_text,
+      main_text)
+check("anim loop preserves timeline gap",
+      "schedule function p:test_anim_abs/frames/frame_0005 6t" in last_frame_text,
+      last_frame_text)
+
+# ------ 6. 动画粒子类型增量编码 ------
+print("\n--- 6. 粒子类型增量编码 ---")
 
 anim2 = ParticleAnimation()
 anim2.add_frame(0, circle(radius=2, points=10, particle="minecraft:flame"))
@@ -233,6 +270,11 @@ save_sps(empty, "output_test/test_empty")
 le = load_sps("output_test/test_empty.sps")
 check("empty shape", len(le.points) == 0)
 
+# 极小采样参数
+check("sphere v_points=1", len(sphere(radius=2, u_points=4, v_points=1).points) == 4)
+check("helix points=1", helix(points=1).points == [(2.0, 0.0, 0.0)])
+check("sine_wave points=1", sine_wave(points=1).points == [(0.0, 0.0, 0.0)])
+
 # ------ 7. 查看生成的文件示例 ------
 print("\n--- 7. 文件内容示例 ---\n")
 
@@ -269,13 +311,19 @@ check("to_snbt escape quote",
       to_snbt('say "hi"') == '"say \\"hi\\""')
 check("to_snbt escape backslash",
       to_snbt('a\\b') == '"a\\\\b"')
+check("to_snbt escape newline",
+      to_snbt('a\nb') == '"a\\nb"')
+check("to_snbt quoted key",
+      to_snbt({"a b": "x"}) == '{"a b":"x"}')
 
 # 序列化→反序列化往返（仅浮点和字符串可完整往返）
 for label, val in [
     ("float",  1.5),
     ("string", "hello"),
     ("str_esc", 'a"b\\c'),
+    ("str_ctrl", "a\nb\tc"),
     ("dict_float", {"color": [1.0, 0.0, 0.0], "scale": 2.0}),
+    ("dict_quoted_key", {"a b": "x"}),
 ]:
     check(f"snbt round-trip {label}", from_snbt(to_snbt(val)) == val)
 
