@@ -126,14 +126,17 @@ class ParticleCompiler:
         prec:  坐标小数位数（默认 4）
 
         生成结构:
-            <directory>/main.mcfunction                   ← 入口，召唤锚点 + 调用第一帧
-            <directory>/stop.mcfunction                   ← 停止播放 + 移除锚点
-            <directory>/frames/frame_XXXX.mcfunction      ← 调度帧，execute at 锚点 + 调用粒子帧
-            <directory>/frames/particles_XXXX.mcfunction  ← 纯粒子命令（~ 相对坐标）
+            <directory>/main.mcfunction              ← 入口，召唤锚点 + 调用第一帧
+            <directory>/stop.mcfunction              ← 停止播放 + 移除锚点
+            <directory>/frames/frame_XXXX.mcfunction ← 每帧同时包含粒子命令与下一帧调度
         """
         os.makedirs(directory, exist_ok=True)
         frames_dir = os.path.join(directory, "frames")
         os.makedirs(frames_dir, exist_ok=True)
+
+        for name in os.listdir(frames_dir):
+            if name.endswith(".mcfunction") and (name.startswith("frame_") or name.startswith("particles_")):
+                os.remove(os.path.join(frames_dir, name))
 
         sorted_ticks = sorted(anim.frames.keys())
         if not sorted_ticks:
@@ -143,24 +146,17 @@ class ParticleCompiler:
         tag = func_path.replace(":", "_").replace("/", "_")
         frame_ids: List[str] = []
         total_ticks = sorted_ticks[-1] + 1
+        anchor_prefix = f"execute at @e[tag={tag},limit=1] run "
 
         for i, tick in enumerate(sorted_ticks):
             frame_name = f"frame_{tick:04d}"
-            particles_name = f"particles_{tick:04d}"
             frame_ids.append(frame_name)
             frame_shape = anim.frames[tick]
-
             particle_cmds = ParticleCompiler.compile(frame_shape, prec)
-            particles_file = os.path.join(frames_dir, f"{particles_name}.mcfunction")
-            with open(particles_file, "w", encoding="utf-8") as f:
-                f.write(f"# 帧 {tick}/{sorted_ticks[-1]} 粒子数: {len(frame_shape.points)}\n")
-                for cmd in particle_cmds:
-                    f.write(cmd + "\n")
 
-            particles_func = f"{func_path}/frames/{particles_name}"
-            frame_func = f"{func_path}/frames/{frame_name}"
+            frame_cmds = [f"# 帧 {tick}/{sorted_ticks[-1]} 粒子数: {len(frame_shape.points)}"]
+            frame_cmds.extend(f"{anchor_prefix}{cmd}" for cmd in particle_cmds)
 
-            frame_cmds = [f"execute at @e[tag={tag},limit=1] run function {particles_func}"]
             if i + 1 < len(sorted_ticks):
                 next_tick = sorted_ticks[i + 1]
                 delay = next_tick - tick
@@ -170,13 +166,13 @@ class ParticleCompiler:
                 first_frame_func = f"{func_path}/frames/frame_{sorted_ticks[0]:04d}"
                 delay = total_ticks - tick + sorted_ticks[0]
                 frame_cmds.append(f"schedule function {first_frame_func} {delay}t")
+            else:
+                frame_cmds.append(f"kill @e[tag={tag}]")
 
             frame_file = os.path.join(frames_dir, f"{frame_name}.mcfunction")
             with open(frame_file, "w", encoding="utf-8") as f:
                 for cmd in frame_cmds:
                     f.write(cmd + "\n")
-                if i + 1 == len(sorted_ticks) and not loop:
-                    f.write(f"kill @e[tag={tag}]\n")
 
         first_frame_func = f"{func_path}/frames/{frame_ids[0]}"
         main_file = os.path.join(directory, "main.mcfunction")

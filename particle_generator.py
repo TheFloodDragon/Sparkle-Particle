@@ -359,6 +359,43 @@ def main():
         f"{output_dir}/anim_fire_tornado", func_path="p:anim_fire_tornado",
     )
 
+    # 6-9 转动六芒星阵列：中心主星 + 六枚环绕副星
+    def spinning_hexagram_array(progress):
+        angle = progress * 2 * math.pi
+        scene = circle(radius=5.5, points=160, particle="minecraft:end_rod").rotate_x(math.pi / 5).rotate_y(angle * 1.5).offset(y=5)
+        scene = scene + star(
+            outer_r=2.6, inner_r=1.1, n_points=6, samples=260,
+            particle="minecraft:end_rod",
+        ).rotate_x(math.pi / 2).rotate_z(-angle * 2.5).offset(y=5)
+
+        n_stars = 6
+        orbit_radius = 5.5
+        for i in range(n_stars):
+            orbit_angle = angle + i * 2 * math.pi / n_stars
+            x = orbit_radius * math.cos(orbit_angle)
+            z = orbit_radius * math.sin(orbit_angle)
+            y = 5 + 0.7 * math.sin(angle * 2 + i * math.pi / 3)
+
+            mini_star = star(
+                outer_r=1.25, inner_r=0.55, n_points=6, samples=160,
+                particle="minecraft:end_rod",
+            ).rotate_x(math.pi / 2).rotate_z(angle * 4 + i * math.pi / 3).rotate_y(orbit_angle + math.pi / 2).offset(x=x, y=y, z=z)
+
+            spoke = line(
+                start=(0, 5, 0),
+                end=(x, y, z),
+                points=18,
+                particle="minecraft:end_rod",
+            )
+            scene = scene + mini_star + spoke
+
+        return scene
+
+    ParticleCompiler.save_animation(
+        ParticleAnimation.expanding(spinning_hexagram_array, duration=80, fade_out=0),
+        f"{output_dir}/anim_hexagram_array", func_path="p:anim_hexagram_array", loop=True,
+    )
+
     # ================================================================
     #  7. 复合场景
     # ================================================================

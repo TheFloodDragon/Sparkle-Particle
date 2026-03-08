@@ -222,6 +222,9 @@ check("anim absolute first tick delayed",
 check("anim loop preserves timeline gap",
       "schedule function p:test_anim_abs/frames/frame_0005 6t" in last_frame_text,
       last_frame_text)
+check("anim merged frame files",
+      not any(name.startswith("particles_") for name in os.listdir("output_test/test_anim_abs/frames")),
+      os.listdir("output_test/test_anim_abs/frames"))
 
 # ------ 6. 动画粒子类型增量编码 ------
 print("\n--- 6. 粒子类型增量编码 ---")

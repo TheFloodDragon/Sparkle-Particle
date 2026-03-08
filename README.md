@@ -25,6 +25,10 @@ Sparkle/
 │   ├── sps.py                   # SPS 格式编解码器
 │   ├── snbt.py                  # SNBT 序列化与反序列化
 │   └── optioned.py              # 粒子选项工厂函数
+├── examples/                    # 独立案例
+│   ├── _example_utils.py        # 独立案例公共辅助函数
+│   ├── glamorous_particle_showcase.py  # 独立炫酷动画示例
+│   └── text_particle_showcase.py       # 独立字符转粒子示例
 ├── particle_generator.py        # 示例程序（40+ 案例）
 ├── test_sps.py                  # SPS / SNBT 格式往返测试
 └── output/                      # 生成的文件
@@ -59,18 +63,11 @@ ParticleCompiler.save(circle(radius=3, points=80), "output/circle")
 
 - **参数方程** — 利萨如曲线、玫瑰曲线、蝴蝶曲线、莫比乌斯带、球面螺线、圆锥面、阿基米德螺线
 
-- **动画效果** — 心形淡入淡出、爆炸环、上升螺旋、呼吸球体、旋转星星、粒子喷泉、传送门、火焰龙卷风
+- **动画效果** — 心形淡入淡出、爆炸环、上升螺旋、呼吸球体、旋转星星、粒子喷泉、传送门、火焰龙卷风、转动六芒星阵列
 
 - **复合场景** — 魔法阵、原子模型、粒子树、银河漩涡、线框立方体
 
 - **正多面体** — 正四面体、立方体、正八面体、正十二面体、正二十面体
-
-## 使用方法
-
-1. 将 `.mcfunction` 文件放入数据包 `data/<namespace>/function/` 目录
-2. 单帧图形：`/function <namespace>:<name>`
-3. 动画入口：`/function <namespace>:<name>/main`
-4. 停止动画：`/function <namespace>:<name>/stop`
 
 ---
 
@@ -175,6 +172,8 @@ anim = ParticleAnimation.sequence([(0, shape_a), (20, shape_b), (40, shape_c)])
 ParticleCompiler.save_animation(anim, "output/anim_name", func_path="pack:anim_name", loop=True)
 ```
 
+动画保存时，每一帧只生成一个 `frame_XXXX.mcfunction` 文件，粒子命令与下一帧调度已合并，以减少文件数。
+
 ### ParticleCompiler — 编译与输出
 
 ```python
@@ -235,6 +234,36 @@ anim = load_sps("output/my_anim.sps")
 - **数值紧凑化** — `0.5000`→`.5`，`-0.3000`→`-.3`，`3.0`→`3`
 - **帧间继承** — 动画中相邻帧的粒子参数相同时省略
 
-## 依赖
+## 独立案例
 
-Python 3.10+，无第三方依赖。
+除 `particle_generator.py` 里的完整示例集合外，仓库还提供放在 `examples/` 目录下的独立案例，适合单独运行、阅读和二次修改。
+
+### 1. 炫酷循环动画
+
+```bash
+python examples/glamorous_particle_showcase.py
+```
+
+- 输出目录：`output/glamorous_particle/`
+- 游戏内调用：`/function p:glamorous_particle/main`
+- 特点：多层环面、螺旋、星冠与颜色渐变组合出的循环演出
+
+### 2. Unicode 字符转粒子
+
+```bash
+python examples/text_particle_showcase.py "你好 Sparkle" --font-size 120 --sample-step 1
+```
+
+- 依赖：`pip install pillow`
+- 输出文件：`output/text_particle_showcase.mcfunction`
+- 动画目录：`output/text_particle_wave/`
+- 支持中文、英文与多数 Unicode 字符
+- 支持 `|` 或 `\n` 作为换行
+- 可通过 `--font-size`、`--sample-step`、`--world-step`、`--threshold` 调整精度
+
+## 使用方法
+
+1. 将 `.mcfunction` 文件放入数据包 `data/<namespace>/function/` 目录
+2. 单帧图形：`/function <namespace>:<name>`
+3. 动画入口：`/function <namespace>:<name>/main`
+4. 停止动画：`/function <namespace>:<name>/stop`
